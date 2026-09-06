@@ -17,7 +17,7 @@ export default function UserSidebar({ activeTab = 'dashboard', setActiveTab }) {
           <button type="button" onClick={() => setIsLoansOpen((open) => !open)} className="flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm text-zinc-400 hover:bg-zinc-900 hover:text-white"><span className="flex items-center gap-3"><HiCash className="h-5 w-5" />Loans</span>{isLoansOpen ? <HiChevronUp className="h-4 w-4" /> : <HiChevronDown className="h-4 w-4" />}</button>
           {isLoansOpen && <div className="ml-4 space-y-1 border-l border-zinc-800 pl-3">
             {/* Request New Loan*/}
-            <Link href="/user_dashbourd/loan_request" className={linkClass('request-loan')}><HiPlusCircle className="h-4 w-4 text-amber-400" />Request New Loan</Link>
+            <Link href="/user_dashbourd/new_loan" className={linkClass('request-loan')}><HiPlusCircle className="h-4 w-4 text-amber-400" />Request New Loan</Link>
             {/* My Active Loans:*/}
             <Link href="/user_dashbourd/active_loan" className={linkClass('active_loan')}><HiDocumentText className="h-4 w-4" />My Active Loans</Link>
             {/* Past / History Loans: */}

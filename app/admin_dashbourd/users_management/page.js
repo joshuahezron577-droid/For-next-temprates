@@ -1,181 +1,402 @@
-"use client";
+'use client';
 
-import React, { useState } from 'react';
-import { Eye, UserX, UserCheck, Shield, Mail, Phone, MoreVertical } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  Eye, UserX, UserCheck, Mail, Phone,
+  RefreshCw, AlertTriangle, Users, Search
+} from 'lucide-react';
+import { supabase } from '@/lib/superbase';
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+const fmt = (n) =>
+  `TZS ${Number(n || 0).toLocaleString('en-TZ', { maximumFractionDigits: 0 })}`;
+
+const getInitials = (name = '') =>
+  name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2) || '??';
+
+const fmtDate = (iso) => {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-TZ', {
+    day: 'numeric', month: 'short', year: 'numeric',
+  });
+};
+
+// ─── Component ───────────────────────────────────────────────────────────────
 
 export default function UsersManagementPage() {
-  // Orodha ya watumiaji/wateja kwenye mfumo
-  const [users, setUsers] = useState([
-    {
-      id: 'USR-301',
-      name: 'Grace Mallya',
-      email: 'grace.mallya@gmail.com',
-      phone: '0655123456',
-      activeLoans: 1,
-      totalBorrowed: 'TZS 2,000,000',
-      status: 'Active',
-      initials: 'GM',
-    },
-    {
-      id: 'USR-302',
-      name: 'David Kimaro',
-      email: 'david.kimaro@yahoo.com',
-      phone: '0714988776',
-      activeLoans: 1,
-      totalBorrowed: 'TZS 4,500,000',
-      status: 'Active',
-      initials: 'DK',
-    },
-    {
-      id: 'USR-303',
-      name: 'Amani Juma',
-      email: 'amani.juma@outlook.com',
-      phone: '0696408701',
-      activeLoans: 0,
-      totalBorrowed: 'TZS 1,500,000',
-      status: 'Pending Verification',
-      initials: 'AJ',
-    },
-    {
-      id: 'USR-304',
-      name: 'Neema Mwakyusa',
-      email: 'neema.m@gmail.com',
-      phone: '0754332211',
-      activeLoans: 0,
-      totalBorrowed: 'TZS 1,200,000',
-      status: 'Suspended',
-      initials: 'NM',
-    },
-  ]);
+  const [users, setUsers]         = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState(null);
+  const [actionLoading, setActionLoading] = useState(null);
+  const [toast, setToast]         = useState(null);
+  const [search, setSearch]       = useState('');
+  const [expandedUser, setExpandedUser] = useState(null);
 
-  // Kitendo cha kuangalia profile ya mteja
-  const handleViewUser = (name) => {
-    alert(`Opening profile details and history for ${name}`);
+  const showToast = (type, message) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3500);
   };
 
-  // Kitendo cha kubadili status ya mteja (Active <-> Suspended)
-  const handleToggleStatus = (id, name, currentStatus) => {
-    const newStatus = currentStatus === 'Suspended' ? 'Active' : 'Suspended';
-    setUsers(prevUsers =>
-      prevUsers.map(user => user.id === id ? { ...user, status: newStatus } : user)
+  // ── Fetch profiles + their loans ─────────────────────────────────────────
+  const fetchUsers = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    const { data, error: err } = await supabase
+      .from('profiles')
+      .select(`
+        id,
+        full_name,
+        username,
+        email,
+        role,
+        is_active,
+        created_at,
+        loans (
+          id,
+          amount,
+          status
+        )
+      `)
+      .order('created_at', { ascending: false });
+
+    if (err) {
+      setError(err.message);
+    } else {
+      setUsers(data || []);
+    }
+
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
+
+  // ── Toggle is_active ──────────────────────────────────────────────────────
+  const handleToggleStatus = async (userId, name, currentActive) => {
+    setActionLoading(userId);
+    const newActive = !currentActive;
+
+    const { error: updateErr } = await supabase
+      .from('profiles')
+      .update({ is_active: newActive })
+      .eq('id', userId);
+
+    if (updateErr) {
+      showToast('error', `Failed: ${updateErr.message}`);
+    } else {
+      setUsers(prev =>
+        prev.map(u => u.id === userId ? { ...u, is_active: newActive } : u)
+      );
+      showToast('success', `${name} — account ${newActive ? 'activated' : 'suspended'}.`);
+    }
+
+    setActionLoading(null);
+  };
+
+  // ── Filtered users ────────────────────────────────────────────────────────
+  const filtered = users.filter(u => {
+    const q = search.toLowerCase();
+    return (
+      (u.full_name || '').toLowerCase().includes(q) ||
+      (u.email || '').toLowerCase().includes(q) ||
+      (u.username || '').toLowerCase().includes(q)
     );
-    alert(`User ${name} status has been updated to ${newStatus}.`);
-  };
+  });
+
+  // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="w-full bg-[#121614] min-h-screen text-white p-8">
-      {/* Kichwa cha Ukurasa */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-          <h2 className="text-xl font-bold tracking-wide">Users Management</h2>
-          <p className="text-xs text-neutral-400 mt-1">Manage all registered borrowers, view their profiles, and control account statuses.</p>
-        </div>
+    <div className="w-full bg-[#0c0f0e] min-h-screen text-white p-6 md:p-8">
 
+      {/* TOAST */}
+      {toast && (
+        <div className={`fixed top-5 right-5 z-50 flex items-center gap-2 px-4 py-3 rounded-xl border shadow-2xl text-sm font-medium transition-all ${
+          toast.type === 'success'
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+            : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
+        }`}>
+          {toast.message}
+        </div>
+      )}
+
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div>
+          <h2 className="text-xl font-bold tracking-wide flex items-center gap-2">
+            <Users size={20} className="text-amber-400" />
+            Users Management
+          </h2>
+          <p className="text-xs text-neutral-400 mt-1">
+            Manage all registered borrowers, view their profiles, and control account statuses.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Search */}
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-8 pr-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl text-xs text-white placeholder:text-zinc-600 focus:outline-none focus:border-zinc-600 transition w-52"
+            />
+          </div>
+          <button
+            onClick={fetchUsers}
+            disabled={loading}
+            className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-3 py-2 rounded-xl text-xs font-semibold transition disabled:opacity-50 cursor-pointer"
+          >
+            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+            Refresh
+          </button>
+        </div>
       </div>
 
-      {/* Jedwali au Orodha ya Watumiaji (Users Table/List Cards) */}
-      <div className="bg-[#161b18] border border-neutral-800/80 rounded-2xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-neutral-800 bg-neutral-900/50 text-neutral-400 uppercase text-[10px] tracking-wider">
-                <th className="py-3 px-4 font-semibold">User Details</th>
-                <th className="py-3 px-4 font-semibold">Contact Info</th>
-                <th className="py-3 px-4 font-semibold">Active Loans</th>
-                <th className="py-3 px-4 font-semibold">Total Borrowed</th>
-                <th className="py-3 px-4 font-semibold">Status</th>
-                <th className="py-3 px-4 font-semibold text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-neutral-800/60">
-              {users.length > 0 ? (
-                users.map((user) => (
-                  <tr key={user.id} className="hover:bg-neutral-900/30 transition-all">
-                    {/* Jina na ID */}
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
-                          {user.initials}
-                        </div>
-                        <div>
-                          <p className="font-bold text-white">{user.name}</p>
-                          <span className="text-[10px] text-neutral-400">{user.id}</span>
-                        </div>
-                      </div>
-                    </td>
+      {/* SUMMARY PILLS */}
+      {!loading && !error && (
+        <div className="flex gap-3 mb-5 flex-wrap">
+          <div className="bg-zinc-900/60 border border-zinc-800 px-3 py-1.5 rounded-xl text-xs">
+            <span className="text-zinc-500">Total Users: </span>
+            <span className="text-white font-bold">{users.length}</span>
+          </div>
+          <div className="bg-zinc-900/60 border border-zinc-800 px-3 py-1.5 rounded-xl text-xs">
+            <span className="text-zinc-500">Active Accounts: </span>
+            <span className="text-emerald-400 font-bold">
+              {users.filter(u => u.is_active !== false).length}
+            </span>
+          </div>
+          <div className="bg-zinc-900/60 border border-zinc-800 px-3 py-1.5 rounded-xl text-xs">
+            <span className="text-zinc-500">Suspended: </span>
+            <span className="text-rose-400 font-bold">
+              {users.filter(u => u.is_active === false).length}
+            </span>
+          </div>
+          <div className="bg-zinc-900/60 border border-zinc-800 px-3 py-1.5 rounded-xl text-xs">
+            <span className="text-zinc-500">With Active Loans: </span>
+            <span className="text-amber-400 font-bold">
+              {users.filter(u => (u.loans || []).some(l => l.status === 'active')).length}
+            </span>
+          </div>
+        </div>
+      )}
 
-                    {/* Mawasiliano */}
-                    <td className="py-4 px-4 text-neutral-300">
-                      <div className="space-y-0.5">
-                        <p className="flex items-center gap-1.5"><Phone size={12} className="text-neutral-500" /> {user.phone}</p>
-                        <p className="flex items-center gap-1.5 text-neutral-400"><Mail size={12} className="text-neutral-500" /> {user.email}</p>
-                      </div>
-                    </td>
+      {/* LOADING */}
+      {loading && (
+        <div className="bg-[#121614] border border-neutral-800/80 rounded-2xl overflow-hidden">
+          {[1,2,3,4].map(i => (
+            <div key={i} className="flex items-center gap-4 px-4 py-4 border-b border-neutral-800/60 animate-pulse">
+              <div className="w-9 h-9 rounded-full bg-zinc-800" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 w-28 bg-zinc-800 rounded" />
+                <div className="h-2 w-40 bg-zinc-800/60 rounded" />
+              </div>
+              <div className="w-20 h-5 bg-zinc-800 rounded-full" />
+              <div className="w-24 h-4 bg-zinc-800 rounded" />
+              <div className="w-16 h-6 bg-zinc-800 rounded-full" />
+              <div className="flex gap-2">
+                <div className="w-8 h-8 bg-zinc-800 rounded-xl" />
+                <div className="w-8 h-8 bg-zinc-800 rounded-xl" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-                    {/* Mikopo inayendelea */}
-                    <td className="py-4 px-4">
-                      <span className="font-medium text-neutral-200">{user.activeLoans} Active</span>
-                    </td>
+      {/* ERROR */}
+      {!loading && error && (
+        <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-8 text-center">
+          <AlertTriangle className="w-10 h-10 text-rose-400 mx-auto mb-2" />
+          <p className="text-rose-400 font-semibold text-sm">Failed to load users</p>
+          <p className="text-zinc-500 text-xs mt-1">{error}</p>
+          <button onClick={fetchUsers} className="mt-4 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 px-4 py-2 rounded-xl text-xs font-semibold cursor-pointer transition">
+            Try again
+          </button>
+        </div>
+      )}
 
-                    {/* Jumla ya aliyokopa */}
-                    <td className="py-4 px-4">
-                      <span className="font-semibold text-emerald-400">{user.totalBorrowed}</span>
-                    </td>
-
-                    {/* Hali ya Akaunti (Status) */}
-                    <td className="py-4 px-4">
-                      {user.status === 'Active' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-medium">
-                          Active
-                        </span>
-                      ) : user.status === 'Pending Verification' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[10px] font-medium">
-                          Pending
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-medium">
-                          Suspended
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Vitendo vya Admin (Actions) */}
-                    <td className="py-4 px-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          onClick={() => handleViewUser(user.name)}
-                          title="View Profile"
-                          className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-700 transition-all cursor-pointer"
-                        >
-                          <Eye size={14} />
-                        </button>
-
-                        <button
-                          onClick={() => handleToggleStatus(user.id, user.name, user.status)}
-                          title={user.status === 'Suspended' ? 'Activate User' : 'Suspend User'}
-                          className={`p-2 rounded-xl border transition-all cursor-pointer ${
-                            user.status === 'Suspended' 
-                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20' 
-                              : 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20'
-                          }`}
-                        >
-                          {user.status === 'Suspended' ? <UserCheck size={14} /> : <UserX size={14} />}
-                        </button>
-                      </div>
+      {/* TABLE */}
+      {!loading && !error && (
+        <div className="bg-[#121614] border border-neutral-800/80 rounded-2xl overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-neutral-800 bg-neutral-900/50 text-neutral-400 uppercase text-[10px] tracking-wider">
+                  <th className="py-3 px-4 font-semibold">User Details</th>
+                  <th className="py-3 px-4 font-semibold">Contact Info</th>
+                  <th className="py-3 px-4 font-semibold">Active Loans</th>
+                  <th className="py-3 px-4 font-semibold">Total Borrowed</th>
+                  <th className="py-3 px-4 font-semibold">Status</th>
+                  <th className="py-3 px-4 font-semibold text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-neutral-800/60">
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="py-10 text-center text-neutral-500 text-sm">
+                      {search ? `No users found matching "${search}"` : 'No users registered yet.'}
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan="6" className="py-8 text-center text-neutral-500">
-                    No users found matching your search.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                ) : (
+                  filtered.map((user) => {
+                    const name         = user.full_name || user.username || 'Unknown User';
+                    const loans        = user.loans || [];
+                    const activeLoans  = loans.filter(l => l.status === 'active').length;
+                    const totalBorrowed = loans
+                      .filter(l => ['active', 'completed'].includes(l.status))
+                      .reduce((s, l) => s + Number(l.amount || 0), 0);
+                    const isActive     = user.is_active !== false; // default true kama null
+                    const isActioning  = actionLoading === user.id;
+                    const isExpanded   = expandedUser === user.id;
+
+                    return (
+                      <React.Fragment key={user.id}>
+                        <tr className={`hover:bg-neutral-900/30 transition-all ${isExpanded ? 'bg-neutral-900/20' : ''}`}>
+
+                          {/* User details */}
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0">
+                                {getInitials(name)}
+                              </div>
+                              <div>
+                                <p className="font-bold text-white">{name}</p>
+                                <span className="text-[10px] text-neutral-500 font-mono">
+                                  {user.id.slice(0, 8)}...
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Contact */}
+                          <td className="py-4 px-4 text-neutral-300">
+                            <div className="space-y-0.5">
+                              <p className="flex items-center gap-1.5">
+                                <Mail size={11} className="text-neutral-500" />
+                                {user.email || '—'}
+                              </p>
+                              {user.username && (
+                                <p className="text-neutral-500 text-[10px]">@{user.username}</p>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Active loans */}
+                          <td className="py-4 px-4">
+                            <span className={`font-semibold ${activeLoans > 0 ? 'text-blue-400' : 'text-neutral-500'}`}>
+                              {activeLoans} Active
+                            </span>
+                            {loans.filter(l => l.status === 'pending').length > 0 && (
+                              <span className="ml-2 text-[10px] text-amber-400">
+                                +{loans.filter(l => l.status === 'pending').length} pending
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Total borrowed */}
+                          <td className="py-4 px-4">
+                            <span className={`font-semibold ${totalBorrowed > 0 ? 'text-emerald-400' : 'text-neutral-500'}`}>
+                              {totalBorrowed > 0 ? fmt(totalBorrowed) : '—'}
+                            </span>
+                          </td>
+
+                          {/* Status */}
+                          <td className="py-4 px-4">
+                            {isActive ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-medium">
+                                Active
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-medium">
+                                Suspended
+                              </span>
+                            )}
+                          </td>
+
+                          {/* Actions */}
+                          <td className="py-4 px-4 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {/* View details */}
+                              <button
+                                onClick={() => setExpandedUser(isExpanded ? null : user.id)}
+                                title="View Profile"
+                                className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-700 transition-all cursor-pointer"
+                              >
+                                <Eye size={14} />
+                              </button>
+
+                              {/* Suspend / Activate */}
+                              <button
+                                onClick={() => handleToggleStatus(user.id, name, isActive)}
+                                disabled={isActioning}
+                                title={isActive ? 'Suspend User' : 'Activate User'}
+                                className={`p-2 rounded-xl border transition-all cursor-pointer disabled:opacity-50 ${
+                                  isActive
+                                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20'
+                                    : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
+                                }`}
+                              >
+                                {isActioning
+                                  ? <RefreshCw size={14} className="animate-spin" />
+                                  : isActive ? <UserX size={14} /> : <UserCheck size={14} />
+                                }
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+
+                        {/* Expanded row — loan history */}
+                        {isExpanded && (
+                          <tr className="bg-neutral-900/40">
+                            <td colSpan="6" className="px-4 py-4">
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-4 text-[11px] text-zinc-400 mb-3">
+                                  <span>Joined: <strong className="text-zinc-300">{fmtDate(user.created_at)}</strong></span>
+                                  <span>Role: <strong className="text-amber-400 capitalize">{user.role || 'user'}</strong></span>
+                                  <span>Total Loans: <strong className="text-zinc-300">{loans.length}</strong></span>
+                                </div>
+
+                                {loans.length === 0 ? (
+                                  <p className="text-xs text-zinc-600">No loan history for this user.</p>
+                                ) : (
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                                    {loans.map(loan => (
+                                      <div key={loan.id} className="bg-zinc-900 border border-zinc-800 rounded-xl px-3 py-2 flex items-center justify-between text-xs">
+                                        <span className="font-mono text-zinc-500">{loan.id.slice(0, 8)}...</span>
+                                        <span className="text-white font-semibold">{fmt(loan.amount)}</span>
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                                          loan.status === 'active'    ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                          loan.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                          loan.status === 'pending'   ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' :
+                                          'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                        }`}>
+                                          {loan.status}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer */}
+          <div className="px-4 py-3 border-t border-neutral-800/60 bg-neutral-900/30 text-[11px] text-neutral-500">
+            Showing <strong className="text-neutral-300">{filtered.length}</strong> of <strong className="text-neutral-300">{users.length}</strong> users
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

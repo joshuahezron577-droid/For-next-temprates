@@ -20,7 +20,7 @@ export default function VercelHeroAuth() {
               O
             </div>
             <span className="font-bold tracking-tight text-white text-base">
-              Omar <span className="text-emerald-400 font-normal">microfinance</span>
+              Omar <span className="text-amber-400 font-normal">microfinance</span>
             </span>
           </div>
           <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">
@@ -49,7 +49,7 @@ export default function VercelHeroAuth() {
           
           {/* Button 1: New Customer Sign Up */}
           <a
-            href="/signup"
+            href="/sign_up"
             className="flex-1 inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-neutral-950 font-bold text-xs sm:text-sm transition-all shadow-lg shadow-emerald-500/20 cursor-pointer group"
           >
             <UserPlus size={16} className="transition-transform group-hover:scale-110" />
@@ -59,7 +59,7 @@ export default function VercelHeroAuth() {
 
           {/* Button 2: Already a Member Sign In */}
           <a
-            href="/signin"
+            href="/log_in"
             className="flex-1 inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-700/80 text-white font-bold text-xs sm:text-sm transition-all cursor-pointer group"
           >
             <LogIn size={16} className="text-emerald-400 transition-transform group-hover:scale-110" />

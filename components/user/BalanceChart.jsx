@@ -1,25 +1,166 @@
-export default function BalanceChart() {
+'use client';
+
+import React, { useMemo } from 'react';
+import { HiArrowUp, HiArrowDown, HiClock } from 'react-icons/hi';
+
+const fmt = (n) =>
+  `TZS ${Number(n || 0).toLocaleString('en-TZ', { maximumFractionDigits: 0 })}`;
+
+// Tengeneza "transactions" kutoka loans data
+// Kwa sababu hatuna payment_logs table bado, tunaunda historia kutoka loans
+function buildTransactions(loans) {
+  const txs = [];
+
+  loans.forEach((loan) => {
+    const principal = Number(loan.amount || 0);
+
+    // 1. Ombi liliwasilishwa
+    txs.push({
+      id: `REQ-${loan.id.slice(0, 6)}`,
+      type: 'Ombi la Mkopo',
+      amount: principal,
+      date: loan.created_at,
+      status: 'Submitted',
+      direction: 'neutral',
+      statusColor: 'bg-zinc-500/10 text-zinc-400 border-zinc-500/20',
+    });
+
+    // 2. Mkopo ulitolewa (active/completed)
+    if (loan.status === 'active' || loan.status === 'completed') {
+      txs.push({
+        id: `DIS-${loan.id.slice(0, 6)}`,
+        type: 'Mkopo Uliotolewa',
+        amount: principal,
+        date: loan.created_at,
+        status: 'Disbursed',
+        direction: 'in',
+        statusColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+      });
+    }
+
+    // 3. Malipo yaliyofanywa (kama amount_paid > 0)
+    const paid = Number(loan.amount_paid || 0);
+    if (paid > 0) {
+      txs.push({
+        id: `PAY-${loan.id.slice(0, 6)}`,
+        type: 'Malipo ya Mkopo',
+        amount: paid,
+        date: loan.due_date || loan.created_at,
+        status: 'Recorded',
+        direction: 'out',
+        statusColor: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+      });
+    }
+
+    // 4. Mkopo ulikamilika
+    if (loan.status === 'completed') {
+      txs.push({
+        id: `CMP-${loan.id.slice(0, 6)}`,
+        type: 'Mkopo Umekamilika',
+        amount: Number(loan.amount || 0),
+        date: loan.due_date || loan.created_at,
+        status: 'Completed',
+        direction: 'neutral',
+        statusColor: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+      });
+    }
+  });
+
+  // Panga kwa tarehe — hivi karibuni kwanza
+  txs.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  return txs.slice(0, 6); // Onyesha 6 tu za hivi karibuni
+}
+
+const formatDate = (iso) => {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString('en-TZ', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+};
+
+// loans zinakuja tayari kutoka dashboard page — hazihitaji fetch tena
+export default function RecentTransactions({ loans = [] }) {
+  const transactions = useMemo(() => buildTransactions(loans), [loans]);
+
   return (
-    <div className="bg-[#121212] border border-zinc-800 p-6 rounded-2xl shadow-lg flex flex-col justify-between">
-      <div className="flex items-center justify-between mb-4">
+    <div className="bg-[#121212] border border-zinc-800 p-6 rounded-2xl shadow-lg flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
         <div>
-          <h3 className="text-lg font-bold text-white tracking-wide">Balance Trend</h3>
-          <p className="text-xs text-zinc-400">Cumulative loan balance over 7 months</p>
+          <h3 className="text-base font-bold text-white tracking-wide">Recent Transactions</h3>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            Shughuli zako za hivi karibuni za mikopo
+          </p>
         </div>
-        <span className="text-xs font-semibold px-2.5 py-1 bg-zinc-900 border border-zinc-800 text-zinc-300 rounded-lg">
-          Last 6 Months
+        <span className="text-xs font-semibold px-2.5 py-1 bg-zinc-900 border border-zinc-800 text-emerald-400 rounded-lg">
+          Live Feed
         </span>
       </div>
 
-      <div className="w-full h-64 mt-2">
-        <svg viewBox="0 0 700 260" className="h-full w-full" role="img" aria-label="Balance trend rising over seven months">
-          <defs><linearGradient id="balanceFill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#10b981" stopOpacity=".35" /><stop offset="1" stopColor="#10b981" stopOpacity="0" /></linearGradient></defs>
-          {[45, 95, 145, 195].map((y) => <line key={y} x1="30" x2="680" y1={y} y2={y} stroke="#27272a" strokeDasharray="4 6" />)}
-          <path d="M30 190 C90 185 105 210 155 165 S235 180 285 145 S365 160 420 120 S500 130 555 95 S625 85 680 55 L680 220 L30 220 Z" fill="url(#balanceFill)" />
-          <path d="M30 190 C90 185 105 210 155 165 S235 180 285 145 S365 160 420 120 S500 130 555 95 S625 85 680 55" fill="none" stroke="#10b981" strokeWidth="4" strokeLinecap="round" />
-          <g fill="#71717a" fontSize="12"><text x="25" y="245">Feb</text><text x="130" y="245">Mar</text><text x="235" y="245">Apr</text><text x="340" y="245">May</text><text x="445" y="245">Jun</text><text x="550" y="245">Jul</text><text x="650" y="245">Aug</text></g>
-        </svg>
-      </div>
+      {/* Empty state */}
+      {transactions.length === 0 && (
+        <div className="flex-1 flex flex-col items-center justify-center py-10 text-zinc-600">
+          <HiClock className="w-10 h-10 mb-2 opacity-30" />
+          <p className="text-sm">Hakuna shughuli bado.</p>
+          <p className="text-xs mt-1 text-zinc-700">Shughuli zitaonekana hapa ukiomba mkopo.</p>
+        </div>
+      )}
+
+      {/* Transaction list */}
+      {transactions.length > 0 && (
+        <div className="flex flex-col gap-2.5">
+          {transactions.map((tx) => (
+            <div
+              key={tx.id}
+              className="flex items-center justify-between p-3 bg-zinc-900/50 border border-zinc-800/80 rounded-xl hover:bg-zinc-900/80 transition-colors"
+            >
+              {/* Left: icon + info */}
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl shrink-0 ${
+                  tx.direction === 'in'
+                    ? 'bg-emerald-500/10 text-emerald-400'
+                    : tx.direction === 'out'
+                    ? 'bg-blue-500/10 text-blue-400'
+                    : 'bg-zinc-800 text-zinc-400'
+                }`}>
+                  {tx.direction === 'in'
+                    ? <HiArrowDown className="w-4 h-4" />
+                    : tx.direction === 'out'
+                    ? <HiArrowUp className="w-4 h-4" />
+                    : <HiClock className="w-4 h-4" />}
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-white leading-tight">{tx.type}</p>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span className="text-[10px] font-mono text-zinc-500">{tx.id}</span>
+                    <span className="text-[10px] text-zinc-600">•</span>
+                    <span className="text-[10px] text-zinc-500">{formatDate(tx.date)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: amount + badge */}
+              <div className="text-right shrink-0">
+                <p className={`text-sm font-bold ${
+                  tx.direction === 'in'
+                    ? 'text-emerald-400'
+                    : tx.direction === 'out'
+                    ? 'text-blue-400'
+                    : 'text-zinc-300'
+                }`}>
+                  {tx.direction === 'in' ? '+' : tx.direction === 'out' ? '-' : ''}{fmt(tx.amount)}
+                </p>
+                <span className={`inline-block mt-0.5 text-[10px] font-medium px-2 py-0.5 border rounded-full ${tx.statusColor}`}>
+                  {tx.status}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

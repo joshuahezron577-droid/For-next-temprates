@@ -10,7 +10,7 @@ export default function Footer() {
         {/* Column 1: Brand / About */}
         <div className="space-y-3 md:col-span-1">
           <h3 className="text-sm font-bold text-white tracking-wider">
-            Omar <span className="text-emerald-400">microfinance</span>
+            Omar <span className="text-amber-400">microfinance</span>
           </h3>
           <p className="text-zinc-500 leading-relaxed text-[11px]">
             Your trusted financial partner providing seamless loan management, transparent repayment tracking, and instant support.
@@ -23,11 +23,11 @@ export default function Footer() {
           <ul className="space-y-2 text-[11px]">
             <li className="flex items-center space-x-2">
               <HiMail className="w-4 h-4 text-amber-400 flex-shrink-0" />
-              <a href="mailto:joshuahezron57@gmail.com" className="hover:text-amber-400 truncate">joshuahezron57@gmail.com</a>
+              <a href="mailto:joshuahezron57@gmail.com" className="hover:text-amber-400 truncate">joshuahezron577@gmail.com</a>
             </li>
             <li className="flex items-center space-x-2">
               <HiPhone className="w-4 h-4 text-amber-400 flex-shrink-0" />
-              <a href="tel:0696408701" className="hover:text-amber-400">0696408701</a>
+              <a href="tel:0696408701" className="hover:text-amber-400">0773753292</a>
             </li>
             <li className="flex items-center space-x-2">
               <HiGlobeAlt className="w-4 h-4 text-amber-400 flex-shrink-0" />

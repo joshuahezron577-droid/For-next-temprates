@@ -8,7 +8,7 @@ export default function Footer() {
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8 mb-10">
         <div className="space-y-3 md:col-span-1">
           <h3 className="text-sm font-bold text-white tracking-wider">
-            Omar <span className="text-emerald-400">microfinance</span>
+            Omar <span className="text-amber-400">microfinance</span>
           </h3>
           <p className="text-zinc-500 leading-relaxed text-[11px]">
             Your trusted financial partner providing seamless loan management, transparent repayment tracking, and instant support.

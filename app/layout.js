@@ -1,5 +1,8 @@
 import "./globals.css";
-  import Script from 'next/script';
+
+export const metadata = {
+  title: "Omar microfinance",
+};
 
 export default function RootLayout({ children }) {
   return (

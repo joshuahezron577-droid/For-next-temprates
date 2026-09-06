@@ -1,7 +1,8 @@
 'use client';
 import React, { useState } from 'react';
 import Script from 'next/script';
-import { HiMail, HiPhone, HiGlobeAlt, HiCheckCircle } from 'react-icons/hi';
+import { HiMail, HiPhone, HiCheckCircle } from 'react-icons/hi';
+import { FaWhatsapp } from 'react-icons/fa';
 
 export default function HelpSupport() {
   const [formData, setFormData] = useState({
@@ -36,9 +37,21 @@ export default function HelpSupport() {
   return (
     <>
       <Script
-        src="https://embed.tawk.to/693347b229e54f197c444fba/1jbo504ou"
+        id="tawk-to-user-help"
         strategy="lazyOnload"
-      />
+      >
+        {`window.Tawk_API = window.Tawk_API || {};
+window.Tawk_LoadStart = new Date();
+(function () {
+  var script = document.createElement('script');
+  var firstScript = document.getElementsByTagName('script')[0];
+  script.async = true;
+  script.src = 'https://embed.tawk.to/693347b229e54f197c444fba/1jbo504ou';
+  script.charset = 'UTF-8';
+  script.setAttribute('crossorigin', '*');
+  firstScript.parentNode.insertBefore(script, firstScript);
+})();`}
+      </Script>
       <div className="bg-[#121212] border border-zinc-800 p-6 md:p-10 rounded-2xl shadow-xl max-w-6xl mx-auto text-white space-y-10 relative">
       
       {success && (
@@ -157,45 +170,55 @@ export default function HelpSupport() {
 
           <div className="space-y-4 pt-2">
             
-            {/* Email Card (Updated) */}
-            <div className="bg-zinc-900/40 border border-zinc-800 p-5 rounded-2xl flex items-center space-x-4 hover:border-zinc-700 transition">
+            {/* Email Card */}
+            <a href="mailto:joshuahezron577@gmail.com" className="bg-zinc-900/40 border border-zinc-800 p-5 rounded-2xl flex items-center space-x-4 hover:border-zinc-700 transition">
               <div className="w-12 h-12 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 flex-shrink-0">
                 <HiMail className="w-6 h-6" />
               </div>
               <div className="overflow-hidden">
                 <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Email us</p>
-                <a href="mailto:joshuahezron57@gmail.com" className="text-xs md:text-sm font-bold text-white hover:text-amber-400 truncate block">
-                  joshuahezron57@gmail.com
-                </a>
+                <span className="text-xs md:text-sm font-bold text-white truncate block">
+                  joshuahezron577@gmail.com
+                </span>
               </div>
-            </div>
+            </a>
 
-            {/* Call Card (Updated) */}
-            <div className="bg-zinc-900/40 border border-zinc-800 p-5 rounded-2xl flex items-center space-x-4 hover:border-zinc-700 transition">
+            {/* Call Card */}
+            <a href="tel:0773753292" className="bg-zinc-900/40 border border-zinc-800 p-5 rounded-2xl flex items-center space-x-4 hover:border-zinc-700 transition">
               <div className="w-12 h-12 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 flex-shrink-0">
                 <HiPhone className="w-6 h-6" />
               </div>
               <div>
                 <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Call us</p>
-                <a href="tel:0696408701" className="text-xs md:text-sm font-bold text-white hover:text-amber-400 block">
-                  0696408701
-                </a>
+                <span className="text-xs md:text-sm font-bold text-white block">
+                  0773753292
+                </span>
               </div>
-            </div>
+            </a>
 
-            {/* Location / Website Card */}
-            <div className="bg-zinc-900/40 border border-zinc-800 p-5 rounded-2xl flex items-center space-x-4 hover:border-zinc-700 transition">
+            {/* WhatsApp Card */}
+            <a href="https://wa.me/255773753292" target="_blank" rel="noreferrer" className="bg-zinc-900/40 border border-zinc-800 p-5 rounded-2xl flex items-center space-x-4 hover:border-zinc-700 transition">
               <div className="w-12 h-12 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 flex-shrink-0">
-                <HiGlobeAlt className="w-6 h-6" />
+                <FaWhatsapp className="w-6 h-6" />
               </div>
               <div className="overflow-hidden">
-                <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Location / Web</p>
-                <a href="https://trulink.io/" target="_blank" rel="noreferrer" className="text-xs md:text-sm font-bold text-amber-400 hover:underline truncate block">
-                  https://trulink.io/
-                </a>
+                <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">WhatsApp</p>
+                <span className="text-xs md:text-sm font-bold text-amber-400 truncate block">
+                  0773753292
+                </span>
               </div>
-            </div>
+            </a>
 
+          </div>
+
+          <div className="border-t border-zinc-800 pt-5">
+            <h3 className="text-xl font-bold tracking-tight text-white mb-2">What Next?</h3>
+            <div className="w-10 h-1 bg-amber-400 rounded-full mb-4"></div>
+            <div className="space-y-2 text-sm text-zinc-300">
+              <p>1. Instant Review:</p>
+              <p>2. Fast Feedback:</p>
+              <p>3. Loan Processing</p>
+            </div>
           </div>
         </div>
 

@@ -49,7 +49,7 @@ export default function TopNav({
       {/* Upande wa Kushoto: Jina la mfumo na salamu */}
       <div>
         <h1 className="text-xl font-bold tracking-wide">
-          Omar <span className="text-emerald-400">microfinance</span>
+          Omar <span className="text-amber-400">microfinance</span>
         </h1>
       </div>
 

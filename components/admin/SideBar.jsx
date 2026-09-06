@@ -8,12 +8,12 @@ import { LayoutDashboard, FileText, Wallet, Users, Settings, History, HelpCircle
 export default function Sidebar() {
   const pathname = usePathname();
   const menuItems = [
-    { name: 'Dashboard', icon: LayoutDashboard, href: '/admin_dashbourd' },
-    { name: 'Loan Requests', icon: FileText, href: '/admin_dashbourd/loan_request' },
-    { name: 'Active Loans', icon: Wallet, href: '/admin_dashbourd/active_loan' },
-    { name: 'Users Management', icon: Users, href: '/admin_dashbourd/users_management' },
-    { name: 'Settings', icon: Settings, href: '/admin_dashbourd/setting' },
-    { name: 'System Logs', icon: History, href: '/admin_dashbourd/payment_logs' },
+    { name: 'Dashboard',        icon: LayoutDashboard, href: '/admin_dashbourd' },
+    { name: 'Loan Requests',    icon: FileText,         href: '/admin_dashbourd/loan_request' },
+    { name: 'Active Loans',     icon: Wallet,           href: '/admin_dashbourd/active_loan' },
+    { name: 'Users Management', icon: Users,            href: '/admin_dashbourd/users_management' },
+    { name: 'System Logs',      icon: History,          href: '/admin_dashbourd/payment_logs' },
+    { name: 'Settings',         icon: Settings,         href: '/admin_dashbourd/setting' },
   ];
 
   return (
