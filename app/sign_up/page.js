@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import React, { useState, useEffect } from 'react';
-import { User, AtSign, Mail, Lock, Eye, EyeOff, ShieldOff } from 'lucide-react';
+import { User, AtSign, Mail, Lock, Eye, EyeOff, ShieldOff, Check, X } from 'lucide-react';
 import { supabase } from '@/lib/superbase';
 import { useRouter } from 'next/navigation';
 
@@ -24,6 +24,13 @@ export default function SignUpPage() {
   const [checkingSettings, setCheckingSettings] = useState(true);
 
   const router = useRouter();
+
+  // Password validation checks
+  const password = formData.password;
+  const hasMinLength = password.length >= 8;
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const isPasswordValid = hasMinLength && hasUpperCase && hasLowerCase;
 
   // ── Check allow_registration on mount ──────────────────────────────────
   useEffect(() => {
@@ -51,20 +58,19 @@ export default function SignUpPage() {
     setError(null);
     setSuccessMessage(null);
 
-    if (formData.password !== formData.confirmPassword) {
-      setError("Manenosiri hayafanani!");
+    if (!isPasswordValid) {
+      setError("Tafadhali kamilisha masharti yote ya nenosiri.");
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError("Nenosiri lazima liwe na herufi 6 au zaidi.");
+    if (formData.password !== formData.confirmPassword) {
+      setError("Manenosiri hayafanani!");
       return;
     }
 
     setLoading(true);
 
     try {
-      // 1. Sajili kupitia Supabase Auth — weka metadata ya ziada
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -78,8 +84,6 @@ export default function SignUpPage() {
 
       if (signUpError) throw signUpError;
 
-      // 2. Ingiza kwenye profiles — tumia upsert ili kuepuka conflict
-      //    Hii inafanya kazi hata kama email confirmation imewashwa
       if (data.user) {
         const { error: profileError } = await supabase
           .from('profiles')
@@ -94,27 +98,30 @@ export default function SignUpPage() {
             { onConflict: 'id' }
           );
 
-        // Kama RLS inazuia insert (email confirmation required), ruka hapa
-        // Profile itaundwa na trigger au baada ya confirmation
         if (profileError && profileError.code !== '42501') {
-          // 42501 = insufficient_privilege (RLS) — ruka, si hitilafu kubwa
           throw profileError;
         }
       }
 
-      setSuccessMessage("Akaunti imesajiliwa! Angalia barua pepe yako kuthibitisha, kisha ingia.");
+      setSuccessMessage("Account created! Please check your email and click the confirmation link before signing in.");
       
-      setTimeout(() => {
-        router.push('/log_in');
-      }, 3000);
+      // Futa inputs mara moja
+      setFormData({
+        fullName: '',
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+      });
+
+      // Usimhamishie moja kwa moja — asubiri athibitishe email kwanza
 
     } catch (err) {
-      // Tafsiri makosa ya kawaida kwa Kiswahili
       const msg = err.message || '';
       if (msg.includes('already registered') || msg.includes('already been registered')) {
         setError("Barua pepe hii imeshasajiliwa. Jaribu kuingia au tumia barua pepe nyingine.");
       } else if (msg.includes('Password should be')) {
-        setError("Nenosiri lazima liwe na herufi 6 au zaidi.");
+        setError("Nenosiri linapaswa kuwa na angalau herufi 8, herufi kubwa na ndogo.");
       } else if (msg.includes('Unable to validate email')) {
         setError("Barua pepe si sahihi. Tafadhali angalia tena.");
       } else if (msg.includes('duplicate key') || msg.includes('unique constraint')) {
@@ -134,14 +141,12 @@ export default function SignUpPage() {
 
       <div className="w-full max-w-md bg-[#121614]/90 border border-neutral-800/80 rounded-3xl p-8 shadow-2xl relative z-10 backdrop-blur-xl">
 
-        {/* Loading settings */}
         {checkingSettings && (
           <div className="flex items-center justify-center py-16">
             <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
 
-        {/* Registration closed */}
         {!checkingSettings && registrationClosed && (
           <div className="text-center py-8 space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto">
@@ -163,7 +168,6 @@ export default function SignUpPage() {
           </div>
         )}
 
-        {/* Normal sign up form */}
         {!checkingSettings && !registrationClosed && (
           <>
             <div className="text-center mb-8">
@@ -187,7 +191,7 @@ export default function SignUpPage() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
               <div>
                 <label className="block text-[11px] font-semibold text-neutral-300 uppercase tracking-wider mb-1.5">Full Name</label>
                 <div className="relative">
@@ -201,7 +205,7 @@ export default function SignUpPage() {
                 <label className="block text-[11px] font-semibold text-neutral-300 uppercase tracking-wider mb-1.5">Username</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-500"><AtSign size={16} /></span>
-                  <input type="text" name="username" required value={formData.username} onChange={handleChange} placeholder="johndoe88"
+                  <input type="text" name="username" required value={formData.username} onChange={handleChange} placeholder="Khamis"
                     className="w-full bg-[#181d1a] border border-neutral-800 focus:border-emerald-500 text-white text-xs sm:text-sm rounded-xl pl-10 pr-4 py-3 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-neutral-600" />
                 </div>
               </div>
@@ -219,11 +223,24 @@ export default function SignUpPage() {
                 <label className="block text-[11px] font-semibold text-neutral-300 uppercase tracking-wider mb-1.5">Password</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-500"><Lock size={16} /></span>
-                  <input type={showPassword ? 'text' : 'password'} name="password" required value={formData.password} onChange={handleChange} placeholder="••••••••"
+                  <input type={showPassword ? 'text' : 'password'} name="password" required value={formData.password} onChange={handleChange} placeholder="••••••••" autoComplete="new-password"
                     className="w-full bg-[#181d1a] border border-neutral-800 focus:border-emerald-500 text-white text-xs sm:text-sm rounded-xl pl-10 pr-10 py-3 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-neutral-600" />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-neutral-500 hover:text-neutral-300 cursor-pointer">
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
+                </div>
+
+                {/* Real-time Checklist zikitumia rangi nyekundu/kijivu zikigeuka kijani zikiwa valid */}
+                <div className="mt-2 space-y-1 text-[11px]">
+                  <p className={`flex items-center gap-1.5 transition-colors ${hasMinLength ? 'text-emerald-400 font-medium' : 'text-red-400'}`}>
+                    {hasMinLength ? <Check size={12} /> : <X size={12} />} Angalau herufi 8 (8+ characters)
+                  </p>
+                  <p className={`flex items-center gap-1.5 transition-colors ${hasUpperCase ? 'text-emerald-400 font-medium' : 'text-red-400'}`}>
+                    {hasUpperCase ? <Check size={12} /> : <X size={12} />} Herufi kubwa moja (Uppercase)
+                  </p>
+                  <p className={`flex items-center gap-1.5 transition-colors ${hasLowerCase ? 'text-emerald-400 font-medium' : 'text-red-400'}`}>
+                    {hasLowerCase ? <Check size={12} /> : <X size={12} />} Herufi ndogo moja (Lowercase)
+                  </p>
                 </div>
               </div>
 
@@ -231,7 +248,7 @@ export default function SignUpPage() {
                 <label className="block text-[11px] font-semibold text-neutral-300 uppercase tracking-wider mb-1.5">Confirm Password</label>
                 <div className="relative">
                   <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-500"><Lock size={16} /></span>
-                  <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" required value={formData.confirmPassword} onChange={handleChange} placeholder="••••••••"
+                  <input type={showConfirmPassword ? 'text' : 'password'} name="confirmPassword" required value={formData.confirmPassword} onChange={handleChange} placeholder="••••••••" autoComplete="new-password"
                     className="w-full bg-[#181d1a] border border-neutral-800 focus:border-emerald-500 text-white text-xs sm:text-sm rounded-xl pl-10 pr-10 py-3 focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all placeholder:text-neutral-600" />
                   <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-neutral-500 hover:text-neutral-300 cursor-pointer">
                     {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -239,8 +256,9 @@ export default function SignUpPage() {
                 </div>
               </div>
 
-              <button type="submit" disabled={loading}
-                className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl py-3.5 text-sm transition-all shadow-lg shadow-emerald-500/10 cursor-pointer mt-2 disabled:opacity-50">
+              {/* Kitufe kimefungwa (disabled) endapo password haijatimiza masharti */}
+              <button type="submit" disabled={loading || !isPasswordValid}
+                className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-bold rounded-xl py-3.5 text-sm transition-all shadow-lg shadow-emerald-500/10 cursor-pointer mt-2 disabled:opacity-40 disabled:cursor-not-allowed">
                 {loading ? 'Signing up...' : 'Join Now'}
               </button>
             </form>

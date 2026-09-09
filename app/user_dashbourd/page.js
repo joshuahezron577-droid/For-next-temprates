@@ -113,7 +113,7 @@ export default function DashboardPage() {
                   Karibu, <span className="text-emerald-400">{displayName}</span> 👋
                 </h2>
                 <p className="text-xs text-zinc-400 mt-1">
-                  Hapa kuna muhtasari wa mikopo yako na shughuli za hivi karibuni.
+                  Here is a summary of your loans and recent activities.
                 </p>
               </div>
 

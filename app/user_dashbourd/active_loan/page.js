@@ -81,7 +81,7 @@ export default function ActiveLoanPage() {
       return;
     }
 
-    // 2. Pata mikopo yake yenye status = 'active'
+    // 2. Pata mikopo yake yenye status = 'active' au 'completed'
     const { data, error: err } = await supabase
       .from('loans')
       .select(`
@@ -90,7 +90,7 @@ export default function ActiveLoanPage() {
         amount_paid, due_date, created_at, status
       `)
       .eq('user_id', user.id)
-      .eq('status', 'active')
+      .in('status', ['active', 'completed'])
       .order('created_at', { ascending: false });
 
     if (err) {
@@ -249,17 +249,27 @@ export default function ActiveLoanPage() {
               const total      = principal + interest;
               const paid       = Number(loan.amount_paid || 0);
               const remaining  = Math.max(0, total - paid);
+              const isComplete = loan.status === 'completed';
+              const progress   = total > 0 ? Math.min(100, Math.round((paid / total) * 100)) : 0;
               const { installment } = buildSchedule(loan);
 
               return (
-                <div key={loan.id} className="bg-zinc-900/30 border border-zinc-800 p-6 rounded-2xl space-y-4">
+                <div key={loan.id} className={`border p-6 rounded-2xl space-y-4 ${
+                  isComplete
+                    ? 'bg-emerald-500/5 border-emerald-500/20'
+                    : 'bg-zinc-900/30 border-zinc-800'
+                }`}>
 
                   {/* Top row */}
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800 pb-4">
                     <div className="flex items-center gap-3">
                       <span className="text-xs font-mono text-zinc-500">{loan.id.slice(0, 8)}...</span>
-                      <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full border bg-blue-500/10 text-blue-400 border-blue-500/20">
-                        Active
+                      <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${
+                        isComplete
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                          : 'bg-blue-500/10 text-blue-400 border-blue-500/20'
+                      }`}>
+                        {isComplete ? 'Completed' : 'Active'}
                       </span>
                       {loan.purpose && (
                         <span className="text-xs text-zinc-400">{loan.purpose}</span>
@@ -271,19 +281,19 @@ export default function ActiveLoanPage() {
                   {/* Details grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                     <div>
-                      <p className="text-zinc-500 text-[10px] uppercase">Riba</p>
+                      <p className="text-zinc-500 text-[10px] uppercase">Interest Rate</p>
                       <p className="font-semibold text-zinc-200 mt-0.5">{rate}% APR</p>
                     </div>
                     <div>
-                      <p className="text-zinc-500 text-[10px] uppercase">Tarehe ya Ombi</p>
+                      <p className="text-zinc-500 text-[10px] uppercase">Date Applied</p>
                       <p className="font-semibold text-zinc-200 mt-0.5">{fmtDate(loan.created_at)}</p>
                     </div>
                     <div>
-                      <p className="text-zinc-500 text-[10px] uppercase">Malipo Yanayofuata</p>
-                      <p className="font-semibold text-zinc-200 mt-0.5">{fmtDate(loan.due_date)}</p>
+                      <p className="text-zinc-500 text-[10px] uppercase">Duration</p>
+                      <p className="font-semibold text-zinc-200 mt-0.5">{loan.duration || '—'}</p>
                     </div>
                     <div>
-                      <p className="text-zinc-500 text-[10px] uppercase">Awamu ya Malipo</p>
+                      <p className="text-zinc-500 text-[10px] uppercase">Installment</p>
                       <p className="font-semibold text-amber-400 mt-0.5">{fmt(installment)}</p>
                     </div>
                   </div>
@@ -291,27 +301,60 @@ export default function ActiveLoanPage() {
                   {/* Balance row */}
                   <div className="grid grid-cols-3 gap-3 bg-zinc-900/60 border border-zinc-800/60 p-4 rounded-xl text-xs">
                     <div>
-                      <p className="text-zinc-500 text-[10px] uppercase">Jumla (+Riba)</p>
+                      <p className="text-zinc-500 text-[10px] uppercase">Total (+Interest)</p>
                       <p className="font-bold text-white">{fmt(total)}</p>
                     </div>
                     <div>
-                      <p className="text-zinc-500 text-[10px] uppercase">Kilicholipwa</p>
+                      <p className="text-zinc-500 text-[10px] uppercase">Paid</p>
                       <p className="font-bold text-emerald-400">{fmt(paid)}</p>
                     </div>
                     <div>
-                      <p className="text-zinc-500 text-[10px] uppercase">Kilichobaki</p>
-                      <p className="font-bold text-rose-400">{fmt(remaining)}</p>
+                      <p className="text-zinc-500 text-[10px] uppercase">Remaining</p>
+                      <p className={`font-bold ${isComplete ? 'text-emerald-400' : 'text-rose-400'}`}>
+                        {isComplete ? 'TZS 0' : fmt(remaining)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div>
+                    <div className="flex justify-between text-[11px] text-zinc-500 mb-1">
+                      <span>Repayment Progress</span>
+                      <span className="text-white font-semibold">{progress}%</span>
+                    </div>
+                    <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-700 ${
+                          isComplete
+                            ? 'bg-emerald-500'
+                            : progress > 60
+                            ? 'bg-gradient-to-r from-emerald-600 to-emerald-400'
+                            : progress > 30
+                            ? 'bg-gradient-to-r from-amber-600 to-amber-400'
+                            : 'bg-gradient-to-r from-rose-600 to-rose-400'
+                        }`}
+                        style={{ width: `${progress}%` }}
+                      />
                     </div>
                   </div>
 
                   {/* Account info */}
                   {(loan.payment_provider || loan.account_number) && (
                     <div className="text-xs text-zinc-500 bg-zinc-900/40 border border-zinc-800/50 px-4 py-2 rounded-xl">
-                      Akaunti ya Malipo:{' '}
+                      Payment Account:{' '}
                       <span className="text-emerald-400 font-semibold">{loan.payment_provider}</span>
                       {loan.account_number && (
                         <span className="font-mono text-zinc-300 ml-1">— {loan.account_number}</span>
                       )}
+                    </div>
+                  )}
+
+                  {/* Completed badge */}
+                  {isComplete && (
+                    <div className="text-center py-1">
+                      <span className="text-xs text-emerald-400 font-semibold">
+                        ✓ Loan Fully Settled — Read Only
+                      </span>
                     </div>
                   )}
                 </div>
@@ -338,7 +381,7 @@ export default function ActiveLoanPage() {
                         <th className="px-5 py-3 font-semibold">Tarehe ya Malipo</th>
                         <th className="px-5 py-3 font-semibold">Kiasi cha Awamu</th>
                         <th className="px-5 py-3 font-semibold">Hali</th>
-                        <th className="px-5 py-3 font-semibold">Ilipwa</th>
+                        <th className="px-5 py-3 font-semibold">Payment Date</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-800/60">

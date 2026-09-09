@@ -15,7 +15,7 @@ export default function HelpSupport() {
 
   useEffect(() => {
     const script = document.createElement('script');
-    script.id = 'tawk-to-user-help';
+    script.id = 'tawk-to-footer-help';
     script.async = true;
     script.src = 'https://embed.tawk.to/693347b229e54f197c444fba/1jbo504ou';
     script.charset = 'UTF-8';
@@ -44,24 +44,21 @@ export default function HelpSupport() {
     e.preventDefault();
     setLoading(true);
     
-    // Simulate API call for sending message
     setTimeout(() => {
       setLoading(false);
       setSuccess(true);
       setFormData({ name: '', email: '', service: '', message: '' });
-      
-      // Clear success message after 5 seconds
       setTimeout(() => setSuccess(false), 5000);
     }, 1500);
   };
 
   return (
     <>
-      <div className="bg-[#121212] border border-zinc-800 p-6 md:p-10 rounded-2xl shadow-xl max-w-6xl mx-auto text-white space-y-10 relative">
+      <div className="bg-[#121212] border border-zinc-800 p-6 pt-10 md:p-10 md:pt-14 rounded-2xl shadow-xl max-w-6xl mx-auto text-white space-y-10 relative">
       
       {success && (
         <div className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 px-4 py-3 rounded-xl flex items-center space-x-3 text-xs">
-          <HiCheckCircle className="w-5 h-5 shrink-0" />
+          <HiCheckCircle className="w-5 h-5 shrink-0"/>
           <span>Your message has been sent successfully! We will get back to you within 24 hours.</span>
         </div>
       )}
@@ -88,6 +85,19 @@ export default function HelpSupport() {
                   value={formData.name}
                   onChange={handleChange}
                   placeholder="e.g. John Kamau" 
+                  required 
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-400 text-white placeholder-zinc-600 transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2">Email address</label>
+                <input 
+                  type="email" 
+                  name="email"
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="you@company.com" 
                   required 
                   className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-400 text-white placeholder-zinc-600 transition"
                 />
@@ -165,7 +175,7 @@ export default function HelpSupport() {
             {/* Email Card */}
             <a href="mailto:joshuahezron577@gmail.com" className="bg-zinc-900/40 border border-zinc-800 p-5 rounded-2xl flex items-center space-x-4 hover:border-zinc-700 transition">
               <div className="w-12 h-12 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 shrink-0">
-                <HiMail className="w-6 h-6" />
+                <HiMail className="w-6 h-6"/>
               </div>
               <div className="overflow-hidden">
                 <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Email us</p>
@@ -178,7 +188,7 @@ export default function HelpSupport() {
             {/* Call Card */}
             <a href="tel:0773753292" className="bg-zinc-900/40 border border-zinc-800 p-5 rounded-2xl flex items-center space-x-4 hover:border-zinc-700 transition">
               <div className="w-12 h-12 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 shrink-0">
-                <HiPhone className="w-6 h-6" />
+                <HiPhone className="w-6 h-6"/>
               </div>
               <div>
                 <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">Call us</p>
@@ -191,7 +201,7 @@ export default function HelpSupport() {
             {/* WhatsApp Card */}
             <a href="https://wa.me/255773753292" target="_blank" rel="noreferrer" className="bg-zinc-900/40 border border-zinc-800 p-5 rounded-2xl flex items-center space-x-4 hover:border-zinc-700 transition">
               <div className="w-12 h-12 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 shrink-0">
-                <FaWhatsapp className="w-6 h-6" />
+                <FaWhatsapp className="w-6 h-6"/>
               </div>
               <div className="overflow-hidden">
                 <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider">WhatsApp</p>

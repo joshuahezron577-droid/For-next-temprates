@@ -3,7 +3,7 @@ import { HiArrowUp, HiArrowDown } from 'react-icons/hi';
 
 export default function StatsCard({ title, value, change, isPositive, icon: Icon }) {
   return (
-    <div className="bg-[#121212] border border-zinc-800 p-5 rounded-2xl shadow-lg flex flex-col justify-between">
+    <div className="bg-[#121212] border-2 border-zinc-800 p-5 rounded-2xl shadow-lg hover:border-emerald-400 hover:border-t-emerald-300 hover:shadow-emerald-400/10 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 cursor-default flex flex-col justify-between">
       <div className="flex items-center justify-between text-zinc-400">
         <span className="text-sm font-medium">{title}</span>
         {Icon && (

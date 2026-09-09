@@ -20,8 +20,8 @@ export default function StatsCards() {
 
     // Endesha maswali yote manne kwa wakati mmoja
     const [usersRes, pendingRes, activeRes, disbursedRes] = await Promise.all([
-      // 1. Jumla ya watumiaji (profiles table)
-      supabase.from('profiles').select('id', { count: 'exact', head: true }),
+      // 1. Jumla ya watumiaji (profiles table — users tu, si admin)
+      supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'user'),
 
       // 2. Maombi yanayosubiri (pending loans)
       supabase
@@ -124,7 +124,7 @@ export default function StatsCards() {
         </div>
         <button
           onClick={fetchStats}
-          className="ml-auto text-xs bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 px-3 py-1.5 rounded-lg font-semibold transition cursor-pointer"
+          className="ml-auto text-xs bg-rose-500/10 hover:bg-amber-400 hover:text-neutral-950 hover:border-amber-300 border border-rose-500/20 px-3 py-1.5 rounded-lg font-semibold transition-colors duration-200 cursor-pointer"
         >
           Jaribu tena
         </button>
@@ -133,7 +133,7 @@ export default function StatsCards() {
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
       {cards.map((item, idx) => {
         const Icon = item.icon;
         const isLoading = loading || item.display === null;
@@ -141,13 +141,13 @@ export default function StatsCards() {
         return (
           <div
             key={idx}
-            className="bg-[#121614] border border-neutral-800/80 rounded-2xl p-5 shadow-xl relative overflow-hidden"
+            className="bg-[#121614] border-2 border-neutral-800/80 rounded-2xl p-4 sm:p-5 shadow-xl hover:border-amber-400 hover:border-t-amber-300 hover:shadow-amber-400/10 hover:shadow-2xl hover:scale-[1.02] transition-all duration-300 cursor-default relative overflow-hidden"
           >
             {/* Refresh ikoni — top right */}
-            <div className="flex justify-between items-start mb-3">
-              <span className="text-xs font-medium text-neutral-400">{item.title}</span>
-              <div className={`p-2 rounded-xl border ${item.iconBg}`}>
-                <Icon size={16} className={item.color} />
+            <div className="flex justify-between items-start mb-2 sm:mb-3">
+              <span className="text-[10px] sm:text-xs font-medium text-neutral-400">{item.title}</span>
+              <div className={`p-1.5 sm:p-2 rounded-xl border ${item.iconBg}`}>
+                <Icon size={14} className={`sm:w-4 sm:h-4 ${item.color}`} />
               </div>
             </div>
 
@@ -159,7 +159,7 @@ export default function StatsCards() {
               </div>
             ) : (
               <>
-                <div className={`text-2xl font-extrabold mb-1 ${item.color}`}>
+                <div className={`text-xl sm:text-2xl font-extrabold mb-1 ${item.color}`}>
                   {item.display}
                 </div>
                 <div className="text-[11px] text-neutral-500">{item.subtitle}</div>

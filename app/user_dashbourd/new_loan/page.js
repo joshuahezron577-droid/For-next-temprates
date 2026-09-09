@@ -1,4 +1,5 @@
 'use client';
+'use client';
 import React, { useState, useEffect } from 'react';
 import { 
   HiCreditCard, HiUpload, HiOfficeBuilding, 
@@ -7,7 +8,7 @@ import {
 } from 'react-icons/hi';
 import { supabase } from '@/lib/superbase';
 
-export default function RequestLoan() {
+export default function RequestLoan({ userId, onSuccess }) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [agreed, setAgreed] = useState(false);
@@ -111,16 +112,44 @@ export default function RequestLoan() {
     setLoading(true);
 
     try {
-      // 1. Pata mtumiaji aliyeingia sasa hivi
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      // 1. Pata user — tumia userId kutoka prop au getUser() kama fallback
+      let uid = userId;
+      if (!uid) {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        uid = authUser?.id;
+      }
 
-      if (authError || !user) {
-        alert("Hitilafu: Hujaingia kwenye akaunti. Tafadhali ingia tena.");
+      if (!uid) {
+        alert("Session expired. Please log in again.");
         setLoading(false);
         return;
       }
 
-      // 2. Tuma data ya mkopo kwenda Supabase
+      const user = { id: uid };
+
+      // 2. Upload ID document kwenye Supabase Storage
+      let id_document_url = null;
+      if (formData.idDocument) {
+        const fileExt  = formData.idDocument.name.split('.').pop();
+        const filePath = `${user.id}/${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('Loans_document')
+          .upload(filePath, formData.idDocument, {
+            cacheControl: '3600',
+            upsert: false,
+          });
+
+        if (uploadError) throw new Error(`ID upload failed: ${uploadError.message}`);
+
+        const { data: urlData } = await supabase.storage
+          .from('Loans_document')
+          .createSignedUrl(filePath, 60 * 60 * 24 * 365);
+
+        id_document_url = urlData?.signedUrl || filePath;
+      }
+
+      // 3. Tuma data ya mkopo kwenda Supabase
       const { data: loanData, error: insertError } = await supabase.from('loans').insert([
         {
           user_id: user.id,
@@ -132,6 +161,7 @@ export default function RequestLoan() {
           duration: formData.repaymentPeriod,
           payment_provider: formData.bankName || selectedMethod,
           account_number: formData.accountNumber,
+          id_document_url,
           description: `Occupation: ${formData.occupation} | Workplace: ${formData.workplace} | Guarantor: ${formData.guarantorName} (${formData.guarantorPhone})`,
         }
       ]).select('id').single();
@@ -146,7 +176,7 @@ export default function RequestLoan() {
             user_id:          user.id,
             full_name:        formData.guarantorName,
             relationship:     formData.guarantorRelationship,
-            phone_no:         formData.guarantorPhone,
+            phone_no:         `+255${formData.guarantorPhone}`,
             email:            formData.guarantorEmail,
             national_id:      formData.guarantorNid,
             physical_address: formData.guarantorAddress,
@@ -165,6 +195,7 @@ export default function RequestLoan() {
       setStep(1);
       setAgreed(false);
       setSelectedMethod('');
+      if (onSuccess) onSuccess();
 
     } catch (err) {
       alert(`Hitilafu wakati wa kuwasilisha: ${err.message}`);
@@ -328,29 +359,172 @@ export default function RequestLoan() {
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {[
-                { label: 'Guarantor Full Name *', name: 'guarantorName', type: 'text', placeholder: 'Full Name' },
-                { label: 'Relationship *', name: 'guarantorRelationship', type: 'text', placeholder: 'e.g. Brother / Colleague' },
-                { label: 'Phone Number *', name: 'guarantorPhone', type: 'tel', placeholder: '0712345678' },
-                { label: 'Email Address *', name: 'guarantorEmail', type: 'email', placeholder: 'name@example.com' },
-                { label: 'National ID Number *', name: 'guarantorNid', type: 'text', placeholder: '20-digit National ID' },
-                { label: 'Physical Home Address *', name: 'guarantorAddress', type: 'text', placeholder: 'e.g. Masaki' },
-                { label: 'Occupation *', name: 'guarantorOccupation', type: 'text', placeholder: 'e.g. Teacher' },
-                { label: 'Workplace *', name: 'guarantorWorkplace', type: 'text', placeholder: 'e.g. TRA' },
-              ].map((field) => (
-                <div key={field.name}>
-                  <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">{field.label}</label>
-                  <input 
-                    type={field.type} 
-                    name={field.name} 
-                    value={formData[field.name]} 
-                    onChange={handleChange} 
-                    placeholder={field.placeholder} 
-                    required 
-                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-xs focus:outline-none focus:border-amber-500 text-white" 
+
+              {/* Guarantor Full Name */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Guarantor Full Name</label>
+                <input
+                  type="text"
+                  name="guarantorName"
+                  value={formData.guarantorName}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[0-9]/g, '');
+                    setFormData(prev => ({ ...prev, guarantorName: val }));
+                  }}
+                  placeholder="Full Name"
+                  required
+                  pattern="[A-Za-z\s]+"
+                  title="Name must contain letters only"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-xs focus:outline-none focus:border-amber-500 text-white"
+                />
+              </div>
+
+              {/* Relationship */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Relationship</label>
+                <input
+                  type="text"
+                  name="guarantorRelationship"
+                  value={formData.guarantorRelationship}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[0-9]/g, '');
+                    setFormData(prev => ({ ...prev, guarantorRelationship: val }));
+                  }}
+                  placeholder="e.g. Brother / Colleague"
+                  required
+                  pattern="[A-Za-z\s/]+"
+                  title="Relationship must contain letters only"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-xs focus:outline-none focus:border-amber-500 text-white"
+                />
+              </div>
+
+              {/* Phone Number — prefix +255 */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Phone Number</label>
+                <div className="flex">
+                  <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-zinc-700 bg-zinc-800 text-zinc-400 text-xs font-semibold select-none">
+                    +255
+                  </span>
+                  <input
+                    type="tel"
+                    name="guarantorPhone"
+                    value={formData.guarantorPhone}
+                    onChange={(e) => {
+                      // Ruhusu digits 9 tu
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 9);
+                      setFormData(prev => ({ ...prev, guarantorPhone: val }));
+                    }}
+                    placeholder="712345678"
+                    required
+                    maxLength={9}
+                    minLength={9}
+                    pattern="\d{9}"
+                    title="Enter 9 digits after +255"
+                    className="flex-1 bg-zinc-900 border border-zinc-800 rounded-r-lg px-3 py-2.5 text-xs focus:outline-none focus:border-amber-500 text-white"
                   />
                 </div>
-              ))}
+                <p className="text-[10px] text-zinc-600 mt-1">Enter 9 digits e.g. 712345678</p>
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Email Address</label>
+                <input
+                  type="email"
+                  name="guarantorEmail"
+                  value={formData.guarantorEmail}
+                  onChange={handleChange}
+                  placeholder="name@example.com"
+                  required
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-xs focus:outline-none focus:border-amber-500 text-white"
+                />
+              </div>
+
+              {/* National ID — exactly 20 digits */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">National ID Number</label>
+                <input
+                  type="text"
+                  name="guarantorNid"
+                  value={formData.guarantorNid}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 20);
+                    setFormData(prev => ({ ...prev, guarantorNid: val }));
+                  }}
+                  placeholder="20-digit National ID"
+                  required
+                  maxLength={20}
+                  minLength={20}
+                  pattern="\d{20}"
+                  title="National ID must be exactly 20 digits"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-xs focus:outline-none focus:border-amber-500 text-white font-mono tracking-widest"
+                />
+                <p className="text-[10px] mt-1">
+                  {formData.guarantorNid.length < 20
+                    ? <span className="text-amber-400/70">{formData.guarantorNid.length}/20 digits</span>
+                    : <span className="text-emerald-400">✓ 20/20 digits</span>
+                  }
+                </p>
+              </div>
+
+              {/* Physical Address — letters only */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Physical Home Address</label>
+                <input
+                  type="text"
+                  name="guarantorAddress"
+                  value={formData.guarantorAddress}
+                  onChange={(e) => {
+                    // Zuia nambari
+                    const val = e.target.value.replace(/[0-9]/g, '');
+                    setFormData(prev => ({ ...prev, guarantorAddress: val }));
+                  }}
+                  placeholder="e.g. Masaki, Dar es Salaam"
+                  required
+                  pattern="[A-Za-z\s,.]+"
+                  title="Address must contain letters only"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-xs focus:outline-none focus:border-amber-500 text-white"
+                />
+              </div>
+
+              {/* Occupation — letters only */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Occupation</label>
+                <input
+                  type="text"
+                  name="guarantorOccupation"
+                  value={formData.guarantorOccupation}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[0-9]/g, '');
+                    setFormData(prev => ({ ...prev, guarantorOccupation: val }));
+                  }}
+                  placeholder="e.g. Teacher"
+                  required
+                  pattern="[A-Za-z\s]+"
+                  title="Occupation must contain letters only"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-xs focus:outline-none focus:border-amber-500 text-white"
+                />
+              </div>
+
+              {/* Workplace — letters only */}
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Workplace</label>
+                <input
+                  type="text"
+                  name="guarantorWorkplace"
+                  value={formData.guarantorWorkplace}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[0-9]/g, '');
+                    setFormData(prev => ({ ...prev, guarantorWorkplace: val }));
+                  }}
+                  placeholder="e.g. TRA"
+                  required
+                  pattern="[A-Za-z\s]+"
+                  title="Workplace must contain letters only"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2.5 text-xs focus:outline-none focus:border-amber-500 text-white"
+                />
+              </div>
+
             </div>
           </div>
 
@@ -376,24 +550,101 @@ export default function RequestLoan() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Bank Name *</label>
-                <input type="text" name="bankName" value={formData.bankName} onChange={handleChange} placeholder="e.g. CRDB Bank / NMB" required className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white" />
+                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Bank Name</label>
+                <input
+                  type="text"
+                  name="bankName"
+                  value={formData.bankName}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[0-9]/g, '');
+                    setFormData(prev => ({ ...prev, bankName: val }));
+                  }}
+                  placeholder="e.g. CRDB Bank / NMB"
+                  required
+                  pattern="[A-Za-z\s/&.]+"
+                  title="Bank name must contain letters only"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white"
+                />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Account Number *</label>
-                <input type="text" name="accountNumber" value={formData.accountNumber} onChange={handleChange} placeholder="e.g. 25410016705" required className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white" />
+                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Account Number</label>
+                <input
+                  type="text"
+                  name="accountNumber"
+                  value={formData.accountNumber}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, '').slice(0, 11);
+                    setFormData(prev => ({ ...prev, accountNumber: val }));
+                  }}
+                  placeholder="11-digit account number"
+                  required
+                  maxLength={11}
+                  minLength={11}
+                  pattern="\d{11}"
+                  title="Account number must be exactly 11 digits"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white font-mono tracking-widest"
+                />
+                <p className="text-[10px] mt-1">
+                  {formData.accountNumber.length < 11
+                    ? <span className="text-amber-400/70">{formData.accountNumber.length}/11 digits</span>
+                    : <span className="text-emerald-400">✓ 11/11 digits</span>
+                  }
+                </p>
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Branch *</label>
-                <input type="text" name="branch" value={formData.branch} onChange={handleChange} placeholder="e.g. Dunga Branch" required className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white" />
+                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Branch</label>
+                <input
+                  type="text"
+                  name="branch"
+                  value={formData.branch}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[0-9]/g, '');
+                    setFormData(prev => ({ ...prev, branch: val }));
+                  }}
+                  placeholder="e.g. Dunga Branch"
+                  required
+                  pattern="[A-Za-z\s]+"
+                  title="Branch must contain letters only"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white"
+                />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Swift Code *</label>
-                <input type="text" name="swiftCode" value={formData.swiftCode} onChange={handleChange} placeholder="NMIBTZ" required className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white" />
+                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Swift Code</label>
+                <input
+                  type="text"
+                  name="swiftCode"
+                  value={formData.swiftCode}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[0-9]/g, '').toUpperCase();
+                    setFormData(prev => ({ ...prev, swiftCode: val }));
+                  }}
+                  placeholder="e.g. NMIBTZ"
+                  required
+                  pattern="[A-Za-z]+"
+                  title="Swift code must contain letters only"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white uppercase"
+                />
               </div>
+
               <div className="md:col-span-2">
-                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Account Holder Name *</label>
-                <input type="text" name="accountHolderName" value={formData.accountHolderName} onChange={handleChange} placeholder="Name as it appears on bank account" required className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white" />
+                <label className="block text-xs font-semibold text-zinc-300 uppercase mb-2">Account Holder Name</label>
+                <input
+                  type="text"
+                  name="accountHolderName"
+                  value={formData.accountHolderName}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[0-9]/g, '');
+                    setFormData(prev => ({ ...prev, accountHolderName: val }));
+                  }}
+                  placeholder="Name as it appears on bank account"
+                  required
+                  pattern="[A-Za-z\s]+"
+                  title="Account holder name must contain letters only"
+                  className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-amber-500 text-white"
+                />
               </div>
             </div>
           </div>
@@ -412,7 +663,14 @@ export default function RequestLoan() {
       )}
 
       {step === 4 && (
-        <form onSubmit={nextStep} className="space-y-6">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          if (!formData.idDocument) {
+            alert('Please upload your ID document before proceeding.');
+            return;
+          }
+          setStep(prev => prev + 1);
+        }} className="space-y-6">
           <div className="border border-zinc-800 p-6 rounded-2xl bg-zinc-900/30 space-y-6">
             <h3 className="text-sm font-bold text-zinc-200 uppercase tracking-wider border-b border-zinc-800 pb-3 flex items-center">
               <HiDocumentText className="w-4 h-4 mr-2 text-amber-400" /> 4. Required Attachments
@@ -420,24 +678,97 @@ export default function RequestLoan() {
 
             <div>
               <label className="block text-xs font-semibold text-zinc-300 uppercase mb-1">
-                Upload National ID / NIDA, Voter ID, or Passport *
+                Upload National ID / NIDA, Voter ID, or Passport
               </label>
               <p className="text-[11px] text-zinc-500 mb-3">
-                Tafadhali pakia kitambulisho halali cha serikali (NIDA, Kitambulisho cha Kura, Leseni ya Udereva, au Hati ya Kusafiria).
+                Upload a valid government-issued ID (NIDA, Voter ID, Driving License, or Passport).
               </p>
-              
-              <div className="flex items-center justify-center w-full">
-                <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-zinc-800 border-dashed rounded-xl cursor-pointer bg-zinc-900 hover:bg-zinc-800/50 transition">
-                  <div className="flex flex-col items-center justify-center pt-4 pb-5 px-4 text-center">
-                    <HiUpload className="w-8 h-8 mb-2 text-amber-400" />
-                    <p className="text-xs text-zinc-300">
-                      {formData.idDocument ? <span className="text-emerald-400 font-semibold">{formData.idDocument.name}</span> : <><span className="font-semibold">Click to upload ID document</span> or drag and drop</>}
-                    </p>
-                    <p className="text-[10px] text-zinc-500 mt-1">PNG, JPG or PDF (MAX. 5MB)</p>
-                  </div>
-                  <input type="file" name="idDocument" onChange={handleChange} className="hidden" required={!formData.idDocument} />
-                </label>
+
+              {/* Allowed formats notice */}
+              <div className="flex items-center gap-3 mb-4">
+                {['JPG', 'PNG', 'PDF'].map(fmt => (
+                  <span key={fmt} className="inline-flex items-center px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-700 text-[10px] font-bold text-amber-400">
+                    {fmt}
+                  </span>
+                ))}
+                <span className="text-[10px] text-zinc-600">Max size: 2MB</span>
               </div>
+
+              {/* Drop zone */}
+              <label
+                className={`flex flex-col items-center justify-center w-full h-40 border-2 border-dashed rounded-xl cursor-pointer transition ${
+                  formData.idDocument
+                    ? 'border-emerald-500/40 bg-emerald-500/5'
+                    : 'border-zinc-700 bg-zinc-900 hover:bg-zinc-800/50'
+                }`}
+              >
+                <div className="flex flex-col items-center justify-center px-4 text-center">
+                  {formData.idDocument ? (
+                    <>
+                      {/* Preview */}
+                      {formData.idDocument.type.startsWith('image/') ? (
+                        <img
+                          src={URL.createObjectURL(formData.idDocument)}
+                          alt="ID preview"
+                          className="h-16 w-auto object-contain rounded-lg mb-2 border border-zinc-700"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-2">
+                          <HiDocumentText className="w-6 h-6 text-amber-400" />
+                        </div>
+                      )}
+                      <p className="text-xs text-emerald-400 font-semibold">{formData.idDocument.name}</p>
+                      <p className="text-[10px] text-zinc-500 mt-0.5">
+                        {(formData.idDocument.size / 1024 / 1024).toFixed(2)} MB — Click to change
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <HiUpload className="w-8 h-8 mb-2 text-amber-400" />
+                      <p className="text-xs text-zinc-300 font-semibold">Click to upload or drag & drop</p>
+                      <p className="text-[10px] text-zinc-500 mt-1">JPG, PNG or PDF — max 2MB</p>
+                    </>
+                  )}
+                </div>
+                <input
+                  type="file"
+                  name="idDocument"
+                  accept="image/jpeg,image/png,application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    // Validate type
+                    const allowed = ['image/jpeg', 'image/png', 'application/pdf'];
+                    if (!allowed.includes(file.type)) {
+                      alert('Invalid file type. Please upload JPG, PNG, or PDF only.');
+                      e.target.value = '';
+                      return;
+                    }
+
+                    // Validate size — 2MB
+                    if (file.size > 2 * 1024 * 1024) {
+                      alert(`File is too large (${(file.size / 1024 / 1024).toFixed(2)}MB). Maximum allowed size is 2MB.`);
+                      e.target.value = '';
+                      return;
+                    }
+
+                    setFormData(prev => ({ ...prev, idDocument: file }));
+                  }}
+                  className="hidden"
+                />
+              </label>
+
+              {/* Remove file button */}
+              {formData.idDocument && (
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, idDocument: null }))}
+                  className="mt-2 text-[11px] text-rose-400 hover:text-rose-300 transition cursor-pointer"
+                >
+                  ✕ Remove file
+                </button>
+              )}
             </div>
           </div>
 

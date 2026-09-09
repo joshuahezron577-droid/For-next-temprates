@@ -43,6 +43,7 @@ export default function LoanRequestsPage() {
         account_number,
         description,
         created_at,
+        id_document_url,
         profiles (
           full_name,
           email,
@@ -286,15 +287,41 @@ export default function LoanRequestsPage() {
                 {/* DESCRIPTION (Guarantor + Occupation) */}
                 {loan.description && (
                   <div className="bg-zinc-900/50 border border-zinc-800/50 rounded-xl px-3 py-2">
-                    <p className="text-[10px] text-zinc-500 uppercase mb-0.5">Maelezo Zaidi</p>
+                    <p className="text-[10px] text-zinc-500 uppercase mb-0.5">Additional Details</p>
                     <p className="text-xs text-zinc-400">{loan.description}</p>
                   </div>
                 )}
 
+                {/* ID DOCUMENT — view only */}
+                <div className="flex items-center justify-between bg-zinc-900/50 border border-zinc-800/50 rounded-xl px-3 py-2">
+                  <div>
+                    <p className="text-[10px] text-zinc-500 uppercase mb-0.5">ID Document</p>
+                    {loan.id_document_url ? (
+                      <p className="text-xs text-emerald-400 flex items-center gap-1">
+                        <HiCheckCircle className="w-3 h-3" /> Document uploaded
+                      </p>
+                    ) : (
+                      <p className="text-xs text-rose-400 flex items-center gap-1">
+                        <HiX className="w-3 h-3" /> No document uploaded
+                      </p>
+                    )}
+                  </div>
+                  {loan.id_document_url && (
+                    <a
+                      href={loan.id_document_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 hover:bg-blue-500/20 transition text-xs font-semibold"
+                    >
+                      <HiEye className="w-3.5 h-3.5" /> View ID
+                    </a>
+                  )}
+                </div>
+
                 {/* DATE + INTEREST */}
                 <div className="flex items-center gap-4 text-[11px] text-zinc-500">
-                  <span>Tarehe: <span className="text-zinc-400">{formatDate(loan.created_at)}</span></span>
-                  <span>Riba: <span className="text-amber-400 font-semibold">{loan.interest_rate}%</span></span>
+                  <span>Date: <span className="text-zinc-400">{formatDate(loan.created_at)}</span></span>
+                  <span>Interest: <span className="text-amber-400 font-semibold">{loan.interest_rate}%</span></span>
                 </div>
 
                 {/* ACTION BUTTONS — onyesha tu kama status ni 'pending' */}

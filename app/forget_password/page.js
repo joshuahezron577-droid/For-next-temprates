@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import { supabase } from '@/lib/superbase'
+import { Mail } from 'lucide-react'
 
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('')
+  const [email, setEmail]     = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState(null)
-  const [error, setError] = useState(null)
+  const [error, setError]     = useState(null)
 
   const handleResetPassword = async (e) => {
     e.preventDefault()
@@ -22,7 +23,8 @@ export default function ForgotPasswordPage() {
     if (resetError) {
       setError(resetError.message)
     } else {
-      setMessage('Tumekuandalia maelekezo! Tafadhali angalia barua pepe yako (email) ili kubadilisha nenosiri lako.')
+      setMessage('Reset link sent! Please check your email and follow the instructions to reset your password.')
+      setEmail('')
     }
 
     setLoading(false)
@@ -31,10 +33,14 @@ export default function ForgotPasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#0c0f0e] px-4">
       <div className="w-full max-w-md rounded-2xl bg-[#121614] border border-neutral-800 p-8 shadow-xl">
-        <h2 className="mb-2 text-2xl font-bold text-white">Umesahau Nenosiri?</h2>
-        <p className="mb-6 text-sm text-neutral-400">
-          Weka barua pepe uliyotumia kusajili akaunti yako ya Omar Microfinance, tutakutumia kiungo cha kubadilisha nenosiri.
-        </p>
+
+        {/* Header */}
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-white">Forgot Password?</h2>
+          <p className="mt-2 text-sm text-neutral-400">
+            Enter the email address linked to your Omar Microfinance account. We will send you a reset link.
+          </p>
+        </div>
 
         {error && (
           <div className="mb-4 rounded-xl bg-rose-500/10 border border-rose-500/20 p-3 text-sm text-rose-400">
@@ -50,29 +56,36 @@ export default function ForgotPasswordPage() {
 
         <form onSubmit={handleResetPassword} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-neutral-300 mb-1">Barua Pepe (Email)</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="mteja@example.com"
-              className="w-full rounded-xl border border-neutral-700 bg-neutral-900 px-3 py-2 text-white placeholder:text-neutral-500 focus:border-amber-500 focus:outline-none text-sm"
-            />
+            <label className="block text-xs font-semibold text-neutral-300 uppercase tracking-wider mb-1.5">
+              Email Address
+            </label>
+            <div className="relative">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-neutral-500">
+                <Mail size={16} />
+              </span>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                className="w-full rounded-xl border border-neutral-700 bg-neutral-900 pl-10 pr-3 py-2.5 text-white placeholder:text-neutral-500 focus:border-amber-500 focus:outline-none text-sm transition"
+              />
+            </div>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 py-2.5 font-semibold text-black transition disabled:opacity-50 cursor-pointer"
+            className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 py-2.5 font-bold text-black transition disabled:opacity-50 cursor-pointer text-sm"
           >
-            {loading ? 'Inatuma maelekezo...' : 'Tuma Kiungo cha Kubadilisha'}
+            {loading ? 'Sending reset link...' : 'Send Reset Link →'}
           </button>
         </form>
 
-        <div className="mt-4 text-center">
+        <div className="mt-5 text-center">
           <a href="/log_in" className="text-sm font-medium text-amber-400 hover:underline">
-            Rudi kwenye ukurasa wa kuingia
+            ← Back to Sign In
           </a>
         </div>
       </div>

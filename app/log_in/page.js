@@ -12,11 +12,26 @@ function SignInForm() {
   const [rememberMe, setRememberMe] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [maintenance, setMaintenance] = useState(false);
+  const [checkingMaintenance, setCheckingMaintenance] = useState(true);
 
   const router       = useRouter();
   const searchParams = useSearchParams();
 
+  // Check maintenance mode on mount — onyesha screen tu
+  // Admin ataingia kupitia form ya kawaida na bypass maintenance
   useEffect(() => {
+    const checkMaintenance = async () => {
+      const { data } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'maintenance_mode')
+        .single();
+      setMaintenance(data?.value === 'true');
+      setCheckingMaintenance(false);
+    };
+    checkMaintenance();
+
     if (searchParams.get('suspended') === '1') {
       setError('Your account has been suspended. Please contact admin.');
     }
@@ -32,26 +47,19 @@ function SignInForm() {
     setLoading(true);
 
     try {
-      // 0. Angalia maintenance_mode kwanza — kabla ya kujaribu kuingia
-      const { data: settingsData } = await supabase
-        .from('system_settings')
-        .select('value')
-        .eq('key', 'maintenance_mode')
-        .single();
-
-      if (settingsData?.value === 'true') {
-        setError('System is currently under maintenance. Please try again later.');
-        setLoading(false);
-        return;
-      }
-
       // 1. Ingia kupitia Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: formData.email,
         password: formData.password,
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        const msg = authError.message;
+        if (msg.includes('Email not confirmed') || msg.includes('email_not_confirmed')) {
+          throw new Error('Please confirm your email before signing in. Check your inbox for the confirmation link.');
+        }
+        throw authError;
+      }
 
       const user = authData.user;
 
@@ -76,10 +84,20 @@ function SignInForm() {
           return;
         }
 
-        // 4. Elekeza kulingana na role
+        // 4. Kama maintenance iko ON na ni user (si admin) — mzuie
+        if (maintenance && profileData.role !== 'admin') {
+          await supabase.auth.signOut();
+          setMaintenance(true); // Reshow maintenance screen
+          setLoading(false);
+          return;
+        }
+
+        // 5. Elekeza kulingana na role
         if (profileData.role === 'admin') {
+          setFormData({ email: '', password: '' });
           router.push('/admin_dashbourd');
         } else {
+          setFormData({ email: '', password: '' });
           router.push('/user_dashbourd');
         }
       }
@@ -90,6 +108,51 @@ function SignInForm() {
       setLoading(false);
     }
   };
+
+  // Loading while checking maintenance
+  if (checkingMaintenance) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-[#0c0f0e]">
+        <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Maintenance screen — inaonyesha kwa users tu
+  // Admin anaweza kubonyeza "Admin Access" kupita
+  if (maintenance && !checkingMaintenance) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-[#0c0f0e] text-white px-4">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="w-20 h-20 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto">
+            <svg className="w-10 h-10 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-white">System Under Maintenance</h1>
+            <p className="text-zinc-400 text-sm mt-2">
+              Omar Microfinance is currently undergoing scheduled maintenance.
+              We will be back shortly.
+            </p>
+          </div>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 text-xs text-zinc-500 text-left space-y-1">
+            <p className="text-zinc-300 font-semibold">Need urgent help?</p>
+            <p>📧 joshuahezron577@gmail.com</p>
+            <p>📞 0696408701</p>
+            <p>💬 WhatsApp: 0773753292</p>
+          </div>
+          {/* Admin bypass */}
+          <button
+            onClick={() => setMaintenance(false)}
+            className="text-[11px] text-zinc-600 hover:text-zinc-400 transition cursor-pointer"
+          >
+            Admin Access →
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full flex bg-[#0c0f0e] text-white font-sans">
@@ -221,7 +284,7 @@ function SignInForm() {
                 <span className="text-neutral-300 text-xs">Remember me</span>
               </label>
 
-              <Link href="/forgot-password" className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
+              <Link href="/forget_password" className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors">
                 Forgot password?
               </Link>
             </div>

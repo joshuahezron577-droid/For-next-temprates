@@ -60,7 +60,7 @@ export default function LoanHistoryPage() {
 
       const { data: guarantorData } = await supabase
         .from('guarantors')
-        .select('loan_id, full_name, relationship, phone_no')
+        .select('loan_id, full_name, relationship, phone_no, occupation')
         .in('loan_id', loanIds);
 
       // Map kwa loan_id ili iwe rahisi kutafuta
@@ -162,10 +162,11 @@ export default function LoanHistoryPage() {
             const cfg        = STATUS_CONFIG[loan.status] || STATUS_CONFIG.pending;
             const guarantor  = guarantors[loan.id];
 
-            // Guarantor display
-            const guarantorDisplay = guarantor
-              ? `${guarantor.full_name}${guarantor.relationship ? ` (${guarantor.relationship})` : ''}${guarantor.phone_no ? ` · ${guarantor.phone_no}` : ''}`
-              : '—';
+            // Guarantor — jina tu
+            const guarantorName = guarantor?.full_name || '—';
+
+            // Occupation kutoka guarantors table
+            const occupation = guarantor?.occupation || '—';
 
             return (
               <div
@@ -175,15 +176,13 @@ export default function LoanHistoryPage() {
                 {/* TOP: ID + status + purpose + amount */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-800/80 pb-4">
                   <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-sm font-bold text-zinc-200 font-mono">
-                      {loan.id.slice(0, 8)}
-                    </span>
                     <span className={`text-[11px] font-medium px-2.5 py-0.5 rounded-full border ${cfg.color}`}>
                       {cfg.label}
                     </span>
                     {loan.purpose && (
-                      <span className="text-xs text-zinc-500">· {loan.purpose}</span>
+                      <span className="text-sm font-bold text-white">{loan.purpose}</span>
                     )}
+                    <span className="text-[10px] font-mono text-zinc-600">{loan.id.slice(0, 8)}</span>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] text-zinc-500 uppercase">Principal Disbursed</p>
@@ -211,15 +210,17 @@ export default function LoanHistoryPage() {
                     </p>
                     <p className="font-semibold text-zinc-300">{fmtDate(loan.disbursed_at)}</p>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-zinc-500 uppercase flex items-center mb-1">
-                      <HiShieldCheck className="w-3 h-3 mr-1 text-blue-400" /> Due Date
-                    </p>
-                    <p className="font-semibold text-zinc-300">{fmtDate(loan.due_date)}</p>
-                  </div>
+                  {loan.due_date && (
+                    <div>
+                      <p className="text-[10px] text-zinc-500 uppercase flex items-center mb-1">
+                        <HiShieldCheck className="w-3 h-3 mr-1 text-blue-400" /> Due Date
+                      </p>
+                      <p className="font-semibold text-zinc-300">{fmtDate(loan.due_date)}</p>
+                    </div>
+                  )}
                 </div>
 
-                {/* BOTTOM: Totals + Guarantor + Remark */}
+                {/* BOTTOM: Totals + Guarantor + Occupation */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs pt-1">
                   <div>
                     <span className="text-zinc-500 text-[10px] uppercase block">
@@ -230,14 +231,18 @@ export default function LoanHistoryPage() {
                       <span className="text-zinc-600 ml-1 text-[10px]">/ {fmt(totalOwed)}</span>
                     )}
                   </div>
-                  <div>
-                    <span className="text-zinc-500 text-[10px] uppercase block">Assigned Guarantor:</span>
-                    <span className="font-medium text-zinc-300">{guarantorDisplay}</span>
-                  </div>
-                  <div>
-                    <span className="text-zinc-500 text-[10px] uppercase block">Closure Remark:</span>
-                    <span className="font-medium text-zinc-400 italic">{cfg.remark}</span>
-                  </div>
+                  {guarantorName !== '—' && (
+                    <div>
+                      <span className="text-zinc-500 text-[10px] uppercase block">Assigned Guarantor:</span>
+                      <span className="font-medium text-zinc-300">{guarantorName}</span>
+                    </div>
+                  )}
+                  {occupation !== '—' && (
+                    <div>
+                      <span className="text-zinc-500 text-[10px] uppercase block">Guarantor Occupation:</span>
+                      <span className="font-medium text-zinc-300">{occupation}</span>
+                    </div>
+                  )}
                 </div>
               </div>
             );

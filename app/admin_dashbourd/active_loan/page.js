@@ -27,12 +27,13 @@ const repaymentStatus = (progress, dueDate) => {
 
 export default function ActiveLoansPage() {
   const [loans, setLoans] = useState([]);
+  const [guarantors, setGuarantors] = useState({}); // { [loan_id]: guarantor }
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
-  const [paymentInputs, setPaymentInputs] = useState({}); // { [loanId]: string }
+  const [paymentInputs, setPaymentInputs] = useState({});
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -69,8 +70,24 @@ export default function ActiveLoansPage() {
 
     if (err) {
       setError(err.message);
-    } else {
-      setLoans(data || []);
+      setLoading(false);
+      return;
+    }
+
+    const loansData = data || [];
+    setLoans(loansData);
+
+    // Fetch guarantors kwa loans hizi
+    if (loansData.length > 0) {
+      const loanIds = loansData.map(l => l.id);
+      const { data: gData } = await supabase
+        .from('guarantors')
+        .select('loan_id, full_name, relationship, phone_no, email, occupation, workplace, physical_address, national_id')
+        .in('loan_id', loanIds);
+
+      const gMap = {};
+      (gData || []).forEach(g => { gMap[g.loan_id] = g; });
+      setGuarantors(gMap);
     }
 
     setLoading(false);
@@ -233,17 +250,18 @@ export default function ActiveLoansPage() {
       {!loading && !error && loans.length > 0 && (
         <div className="max-w-4xl space-y-4">
           {loans.map((loan) => {
-            const profile = loan.profiles || {};
-            const name = profile.full_name || profile.username || 'Mtumiaji';
-            const principal = Number(loan.amount || 0);
-            const interest = principal * (Number(loan.interest_rate || 0) / 100);
-            const totalOwed = principal + interest;
-            const paid = Number(loan.amount_paid || 0);
-            const remaining = Math.max(0, totalOwed - paid);
-            const progress = calcProgress(paid, totalOwed);
-            const status = repaymentStatus(progress, loan.due_date);
+            const profile    = loan.profiles || {};
+            const name       = profile.full_name || profile.username || 'Mtumiaji';
+            const principal  = Number(loan.amount || 0);
+            const interest   = principal * (Number(loan.interest_rate || 0) / 100);
+            const totalOwed  = principal + interest;
+            const paid       = Number(loan.amount_paid || 0);
+            const remaining  = Math.max(0, totalOwed - paid);
+            const progress   = calcProgress(paid, totalOwed);
+            const status     = repaymentStatus(progress, loan.due_date);
             const isActioning = actionLoading === loan.id;
-            const isExpanded = expandedId === loan.id;
+            const isExpanded  = expandedId === loan.id;
+            const guarantor   = guarantors[loan.id]; // guarantor data
 
             return (
               <div
@@ -424,33 +442,84 @@ export default function ActiveLoansPage() {
 
                   {/* Expandable detail panel */}
                   {isExpanded && (
-                    <div className="mt-3 bg-neutral-900/60 border border-neutral-800/60 rounded-xl p-4 text-xs space-y-2 text-neutral-400">
+                    <div className="mt-3 bg-neutral-900/60 border border-neutral-800/60 rounded-xl p-4 text-xs space-y-4 text-neutral-400">
+
+                      {/* Loan details */}
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <p className="text-[10px] uppercase text-neutral-500">Mkopo wa Msingi</p>
+                          <p className="text-[10px] uppercase text-neutral-500">Principal</p>
                           <p className="text-white font-semibold">{fmt(principal)}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] uppercase text-neutral-500">Riba ({loan.interest_rate}%)</p>
+                          <p className="text-[10px] uppercase text-neutral-500">Interest ({loan.interest_rate}%)</p>
                           <p className="text-amber-400 font-semibold">{fmt(interest)}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] uppercase text-neutral-500">Tarehe ya Ombi</p>
+                          <p className="text-[10px] uppercase text-neutral-500">Date Applied</p>
                           <p className="text-white">{new Date(loan.created_at).toLocaleDateString('en-TZ', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
                         </div>
                         <div>
-                          <p className="text-[10px] uppercase text-neutral-500">Barua Pepe</p>
+                          <p className="text-[10px] uppercase text-neutral-500">Client Email</p>
                           <p className="text-white">{profile.email || '—'}</p>
                         </div>
                       </div>
-                      {progress < 100 && (
+
+                      {/* Guarantor section */}
+                      <div className="pt-3 border-t border-neutral-800/60">
+                        <p className="text-[10px] uppercase text-neutral-500 font-semibold mb-2 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+                          Guarantor Information
+                        </p>
+                        {guarantor ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                            <div>
+                              <p className="text-[10px] uppercase text-neutral-600">Full Name</p>
+                              <p className="text-white font-semibold">{guarantor.full_name || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] uppercase text-neutral-600">Relationship</p>
+                              <p className="text-zinc-300">{guarantor.relationship || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] uppercase text-neutral-600">Phone</p>
+                              <p className="text-emerald-400 font-semibold">{guarantor.phone_no || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] uppercase text-neutral-600">Email</p>
+                              <p className="text-zinc-300">{guarantor.email || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] uppercase text-neutral-600">Occupation</p>
+                              <p className="text-zinc-300">{guarantor.occupation || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] uppercase text-neutral-600">Workplace</p>
+                              <p className="text-zinc-300">{guarantor.workplace || '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] uppercase text-neutral-600">National ID</p>
+                              <p className="text-zinc-300 font-mono">{guarantor.national_id || '—'}</p>
+                            </div>
+                            <div className="sm:col-span-2">
+                              <p className="text-[10px] uppercase text-neutral-600">Physical Address</p>
+                              <p className="text-zinc-300">{guarantor.physical_address || '—'}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-neutral-600 italic">
+                            No guarantor data found. (Application submitted before guarantor system was enabled)
+                          </p>
+                        )}
+                      </div>
+
+                      {progress < 100 && loan.status !== 'completed' && (
                         <div className="pt-2 border-t border-neutral-800/60">
                           <button
                             onClick={() => handleMarkComplete(loan.id)}
                             disabled={isActioning}
                             className="text-[11px] text-rose-400 hover:text-rose-300 transition cursor-pointer disabled:opacity-50"
                           >
-                            Weka kama umelipwa kamili (override)
+                            Mark as fully settled (override)
                           </button>
                         </div>
                       )}

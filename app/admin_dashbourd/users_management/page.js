@@ -1,8 +1,9 @@
 'use client';
+'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Eye, UserX, UserCheck, Mail, Phone,
+  Eye, Mail, Trash2,
   RefreshCw, AlertTriangle, Users, Search
 } from 'lucide-react';
 import { supabase } from '@/lib/superbase';
@@ -28,14 +29,37 @@ export default function UsersManagementPage() {
   const [users, setUsers]         = useState([]);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState(null);
-  const [actionLoading, setActionLoading] = useState(null);
   const [toast, setToast]         = useState(null);
   const [search, setSearch]       = useState('');
   const [expandedUser, setExpandedUser] = useState(null);
+  const [deleteLoading, setDeleteLoading] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null); // userId wa kuthibitisha
 
   const showToast = (type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const handleDeleteUser = async (userId, name) => {
+    setDeleteLoading(userId);
+    setConfirmDelete(null);
+
+    const res = await fetch('/api/admin/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId }),
+    });
+
+    const result = await res.json();
+
+    if (!res.ok || result.error) {
+      showToast('error', `Failed: ${result.error}`);
+    } else {
+      setUsers(prev => prev.filter(u => u.id !== userId));
+      showToast('success', `${name} — account deleted successfully.`);
+    }
+
+    setDeleteLoading(null);
   };
 
   // ── Fetch profiles + their loans ─────────────────────────────────────────
@@ -59,6 +83,7 @@ export default function UsersManagementPage() {
           status
         )
       `)
+      .eq('role', 'user')
       .order('created_at', { ascending: false });
 
     if (err) {
@@ -75,27 +100,6 @@ export default function UsersManagementPage() {
   }, [fetchUsers]);
 
   // ── Toggle is_active ──────────────────────────────────────────────────────
-  const handleToggleStatus = async (userId, name, currentActive) => {
-    setActionLoading(userId);
-    const newActive = !currentActive;
-
-    const { error: updateErr } = await supabase
-      .from('profiles')
-      .update({ is_active: newActive })
-      .eq('id', userId);
-
-    if (updateErr) {
-      showToast('error', `Failed: ${updateErr.message}`);
-    } else {
-      setUsers(prev =>
-        prev.map(u => u.id === userId ? { ...u, is_active: newActive } : u)
-      );
-      showToast('success', `${name} — account ${newActive ? 'activated' : 'suspended'}.`);
-    }
-
-    setActionLoading(null);
-  };
-
   // ── Filtered users ────────────────────────────────────────────────────────
   const filtered = users.filter(u => {
     const q = search.toLowerCase();
@@ -248,9 +252,10 @@ export default function UsersManagementPage() {
                     const totalBorrowed = loans
                       .filter(l => ['active', 'completed'].includes(l.status))
                       .reduce((s, l) => s + Number(l.amount || 0), 0);
-                    const isActive     = user.is_active !== false; // default true kama null
-                    const isActioning  = actionLoading === user.id;
                     const isExpanded   = expandedUser === user.id;
+                    const canDelete    = loans.length === 0 ||
+                      loans.every(l => l.status === 'completed' || l.status === 'rejected');
+                    const isDeleting   = deleteLoading === user.id;
 
                     return (
                       <React.Fragment key={user.id}>
@@ -305,45 +310,52 @@ export default function UsersManagementPage() {
 
                           {/* Status */}
                           <td className="py-4 px-4">
-                            {isActive ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-medium">
-                                Active
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-medium">
-                                Suspended
-                              </span>
-                            )}
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-medium">
+                              Active
+                            </span>
                           </td>
 
-                          {/* Actions */}
+                          {/* Actions — View Loans + Delete (if eligible) */}
                           <td className="py-4 px-4 text-right">
                             <div className="flex items-center justify-end gap-2">
-                              {/* View details */}
                               <button
                                 onClick={() => setExpandedUser(isExpanded ? null : user.id)}
-                                title="View Profile"
-                                className="p-2 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-700 transition-all cursor-pointer"
+                                title="View Loan History"
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 hover:text-white hover:border-neutral-700 transition-all cursor-pointer text-xs font-semibold"
                               >
-                                <Eye size={14} />
+                                <Eye size={13} />
+                                View Loans
                               </button>
 
-                              {/* Suspend / Activate */}
-                              <button
-                                onClick={() => handleToggleStatus(user.id, name, isActive)}
-                                disabled={isActioning}
-                                title={isActive ? 'Suspend User' : 'Activate User'}
-                                className={`p-2 rounded-xl border transition-all cursor-pointer disabled:opacity-50 ${
-                                  isActive
-                                    ? 'bg-rose-500/10 border-rose-500/20 text-rose-400 hover:bg-rose-500/20'
-                                    : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20'
-                                }`}
-                              >
-                                {isActioning
-                                  ? <RefreshCw size={14} className="animate-spin" />
-                                  : isActive ? <UserX size={14} /> : <UserCheck size={14} />
-                                }
-                              </button>
+                              {/* Delete — inaonekana tu kama loans zote completed/rejected */}
+                              {canDelete && (
+                                confirmDelete === user.id ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] text-rose-400">Confirm?</span>
+                                    <button
+                                      onClick={() => handleDeleteUser(user.id, name)}
+                                      disabled={isDeleting}
+                                      className="px-2.5 py-1.5 rounded-lg bg-rose-500/20 border border-rose-500/30 text-rose-400 text-[10px] font-bold cursor-pointer hover:bg-rose-500/30 transition disabled:opacity-50"
+                                    >
+                                      {isDeleting ? '...' : 'Yes, Delete'}
+                                    </button>
+                                    <button
+                                      onClick={() => setConfirmDelete(null)}
+                                      className="px-2.5 py-1.5 rounded-lg bg-zinc-800 border border-zinc-700 text-zinc-400 text-[10px] font-bold cursor-pointer hover:bg-zinc-700 transition"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setConfirmDelete(user.id)}
+                                    title="Delete User"
+                                    className="p-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition cursor-pointer"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                )
+                              )}
                             </div>
                           </td>
                         </tr>
