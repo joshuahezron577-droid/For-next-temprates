@@ -55,13 +55,42 @@ export default function PendingRequestsTable() {
     fetchPending();
   }, [fetchPending]);
 
+  // Hesabu due_date kutoka duration string (e.g. "1 Month", "3 Months", "6 Months")
+  const calcDueDate = (duration) => {
+    const now = new Date();
+    if (!duration) {
+      now.setMonth(now.getMonth() + 1);
+      return now.toISOString().split('T')[0];
+    }
+    const lower = duration.toLowerCase();
+    const num = parseInt(lower) || 1;
+    if (lower.includes('year')) {
+      now.setFullYear(now.getFullYear() + num);
+    } else if (lower.includes('week')) {
+      now.setDate(now.getDate() + num * 7);
+    } else {
+      now.setMonth(now.getMonth() + num);
+    }
+    return now.toISOString().split('T')[0];
+  };
+
   // ── Approve au Reject ─────────────────────────────────────────────────────
   const handleAction = async (loanId, newStatus) => {
     setActionLoading(`${loanId}-${newStatus}`);
 
-    const updateData = newStatus === 'active'
-      ? { status: newStatus, approved_at: new Date().toISOString(), disbursed_at: new Date().toISOString() }
-      : { status: newStatus };
+    let updateData;
+    if (newStatus === 'active') {
+      const item = requests.find(r => r.id === loanId);
+      const dueDate = calcDueDate(item?.duration);
+      updateData = {
+        status: newStatus,
+        approved_at: new Date().toISOString(),
+        disbursed_at: new Date().toISOString(),
+        due_date: dueDate,
+      };
+    } else {
+      updateData = { status: newStatus };
+    }
 
     const { error: updateErr } = await supabase
       .from('loans')

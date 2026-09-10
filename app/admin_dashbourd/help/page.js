@@ -10,67 +10,78 @@ import { HiChatBubbleLeftRight } from 'react-icons/hi2';
 const WORKFLOW = [
   {
     step: '01',
-    title: 'Loan Requests',
+    title: 'Loan Requests — Kukagua Maombi',
     icon: HiDocumentText,
     color: 'text-amber-400',
     bg: 'bg-amber-400/10 border-amber-400/20',
-    desc: 'Wateja wanawasilisha maombi ya mikopo kupitia dashboard yao. Nenda "Loan Requests" → tab ya "Pending" → kagua ombi → bonyeza "Idhinisha" au "Kataa".',
+    desc: 'Wateja wanawasilisha maombi ya mikopo kupitia dashboard yao. Kama admin, unaweza kuona maombi yote kwenye ukurasa wa "Loan Requests" ukagawanywa katika tabs: Pending, Active, Rejected, Completed, na Yote.',
     tips: [
-      'Angalia ID Document ya mteja kabla ya kuidhinisha',
-      'Kagua taarifa za Guarantor kwenye panel ya "Maelezo"',
-      'Ukiidhinisha, mkopo unakuwa "Active" moja kwa moja',
+      'Nenda "Loan Requests" → chagua tab "Pending" kuona maombi mapya',
+      'Bonyeza "Idhinisha" — mkopo unakuwa Active na due_date inawekwa kiotomatiki kulingana na muda (e.g. "3 Months" = leo + miezi 3)',
+      'Bonyeza "Kataa" — ombi linahamia tab ya Rejected',
+      'Kabla ya kuidhinisha: angalia ID Document (kitufe cha "View ID") na taarifa za Guarantor',
+      'Ikiwa mkopo hauna ID Document, inaonyesha "No document uploaded" kwa rangi nyekundu',
     ],
   },
   {
     step: '02',
-    title: 'Active Loans & Repayments',
+    title: 'Active Loans & Malipo — Kufuatilia Urejeshaji',
     icon: HiCurrencyDollar,
     color: 'text-emerald-400',
     bg: 'bg-emerald-400/10 border-emerald-400/20',
-    desc: 'Fuatilia mikopo yote iliyo hai. Ukipokea malipo kutoka kwa mteja, weka kiasi kwenye input ya "TZS" kisha bonyeza "Thibitisha" — mfumo utasasisha salio na ratiba.',
+    desc: 'Ukurasa wa "Active Loans" unaonyesha mikopo yote iliyo hai (Active) na iliyokamilika (Completed). Kwa kila mkopo unaona: kiasi kilicholipwa, kilichobaki, maendeleo ya urejeshaji (progress bar), na tarehe ya malipo inayofuata.',
     tips: [
-      'Weka kiasi halisi kilicholipwa na mteja',
+      'Pokea malipo ya mteja → weka kiasi kwenye input ya "TZS" → bonyeza "Thibitisha"',
+      'Progress bar inabadilika rangi: nyekundu (<30%), manjano (30-60%), kijani (>60%)',
       'Mkopo unapofikia 100% unabadilika kuwa "Completed" kiotomatiki',
-      'Bonyeza "Maelezo" kuona taarifa za Guarantor',
+      'Tarehe ya malipo inasogea mbele kwa mwezi mmoja baada ya kila malipo',
+      'Bonyeza "Maelezo" / "Ona Maelezo" kuona taarifa kamili za Guarantor na mteja',
+      'Mkopo uliopita tarehe ya malipo unaonyesha badge ya "Imechelewa" (njano)',
     ],
   },
   {
     step: '03',
-    title: 'Users Management',
+    title: 'Users Management — Kusimamia Wateja',
     icon: HiUsers,
     color: 'text-blue-400',
     bg: 'bg-blue-400/10 border-blue-400/20',
-    desc: 'Simamia akaunti za wateja wote. Unaweza kusimamisha (Suspend) akaunti ya mteja — hataweza kuingia tena hadi uamsha upya.',
+    desc: 'Ukurasa huu unaonyesha wateja wote waliojisajili pamoja na takwimu zao. Juu unaona stat cards tatu: Total Registered (wote), Active Accounts (waliowahi kutumia mfumo), na With Active Loans (wanaolipa sasa).',
     tips: [
-      'Bonyeza Eye icon kuona historia ya mikopo ya mteja',
-      'Suspend inazuia mteja kuingia mara moja',
-      'Activate inarejesha uwezo wa kuingia',
+      'Tumia search box kupata mteja kwa jina, email, au username',
+      'Bonyeza "View Loans" kuona historia yote ya mikopo ya mteja huyo',
+      'Kitufe cha kufuta (trash icon) kinaonekana tu kama mteja hana mikopo inayoendelea',
+      'Bonyeza "Print List" kupata ripoti ya PDF ya wateja wote — inajumuisha takwimu na jedwali',
+      'Loans column kwenye print inaonyesha idadi ya mikopo na badges za active/pending',
     ],
   },
   {
     step: '04',
-    title: 'System Logs',
+    title: 'Payment Logs — Kumbukumbu za Malipo',
     icon: HiChartBar,
     color: 'text-purple-400',
     bg: 'bg-purple-400/10 border-purple-400/20',
-    desc: 'Audit trail kamili ya kila tukio — maombi, idhini, malipo, na mikopo iliyokamilika. Tumia filter na search kupata rekodi unayoitaka.',
+    desc: 'Rekodi kamili ya kila tukio kwenye mfumo — maombi ya mikopo, idhini, malipo yaliyothibitishwa, na mikopo iliyokamilika. Unaweza kutumia filters na search kupata tukio lolote.',
     tips: [
-      'Filter: ALL / REQUEST / APPROVED / REPAYMENT / COMPLETED / REJECTED',
+      'Filter kwa hali: ALL / REQUEST / APPROVED / REPAYMENT / COMPLETED / REJECTED',
       'Tafuta kwa jina la mteja au Log ID',
-      'Read-only — haiwezi kubadilishwa',
+      'Kila rekodi inaonyesha: tarehe, mteja, kiasi, na hatua iliyofanyika',
+      'Ukurasa huu ni read-only — haiwezi kubadilishwa',
+      'Muhimu kwa audit na ufuatiliaji wa fedha',
     ],
   },
   {
     step: '05',
-    title: 'System Settings',
+    title: 'System Settings — Mipangilio ya Mfumo',
     icon: HiCog,
     color: 'text-zinc-400',
     bg: 'bg-zinc-400/10 border-zinc-400/20',
-    desc: 'Badilisha mipangilio ya mfumo — riba ya default, kikomo cha mkopo, maintenance mode, na usajili wa wateja wapya.',
+    desc: 'Badilisha mipangilio mikuu ya mfumo wote. Mabadiliko yanafanya kazi mara moja kwa wateja wote wanaoingia baadaye.',
     tips: [
-      'Maintenance Mode ON → login inazuiwa kwa wateja wote',
-      'Allow Registration OFF → wateja wapya hawawezi kusajili',
-      'Max Loan Limit → inazuia ombi kubwa kuliko kiasi hicho',
+      'Maintenance Mode ON → ukurasa wa "Mfumo Umesimama" unaonekana kwa wateja wote wanaojaribu kuingia',
+      'Allow Registration OFF → wateja wapya hawawezi kusajili — wanaona ujumbe wa kuzuia',
+      'Max Loan Limit → ikiwa mteja anaomba zaidi ya kiasi hiki, fomu inakataa na kuonyesha onyo',
+      'Default Interest Rate → riba hii inatumika kiotomatiki kwa kila ombi jipya la mkopo',
+      'Mabadiliko yote yanasalimishwa kwenye database mara moja ukibonyeza "Save Settings"',
     ],
   },
 ];
@@ -200,13 +211,32 @@ export default function AdminHelpPage() {
 
           </div>
 
-          {/* What Next */}
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 text-xs text-zinc-500 space-y-2">
-            <p className="text-white font-bold text-sm mb-1">What Next?</p>
-            <div className="w-8 h-0.5 bg-amber-400 rounded-full mb-3" />
-            <p><span className="text-zinc-300 font-semibold">1. Instant Review:</span></p>
-            <p><span className="text-zinc-300 font-semibold">2. Fast Feedback:</span></p>
-            <p><span className="text-zinc-300 font-semibold">3. Issue Resolution</span></p>
+          {/* Quick Reference */}
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 text-xs text-zinc-500 space-y-3">
+            <p className="text-white font-bold text-sm">Mtiririko wa Haraka</p>
+            <div className="w-8 h-0.5 bg-amber-400 rounded-full" />
+            <div className="space-y-2.5 pt-1">
+              <div className="flex items-start gap-2">
+                <span className="text-amber-400 font-bold shrink-0">1.</span>
+                <span className="text-zinc-300">Mteja anasajili → anaomba mkopo → unapata arifa kwenye Pending tab</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-amber-400 font-bold shrink-0">2.</span>
+                <span className="text-zinc-300">Kagua hati za ID na Guarantor → Idhinisha au Kataa</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-amber-400 font-bold shrink-0">3.</span>
+                <span className="text-zinc-300">Mkopo unakuwa Active → tarehe ya malipo inawekwa kiotomatiki</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-amber-400 font-bold shrink-0">4.</span>
+                <span className="text-zinc-300">Mteja analipa → thibitisha malipo → progress bar inasogea</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-amber-400 font-bold shrink-0">5.</span>
+                <span className="text-zinc-300">Malipo 100% → mkopo unakuwa Completed kiotomatiki</span>
+              </div>
+            </div>
           </div>
         </div>
 

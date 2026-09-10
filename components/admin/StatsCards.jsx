@@ -19,8 +19,8 @@ export default function StatsCards() {
     setError(null);
 
     // Endesha maswali yote manne kwa wakati mmoja
-    const [usersRes, pendingRes, activeRes, disbursedRes] = await Promise.all([
-      // 1. Jumla ya watumiaji (profiles table — users tu, si admin)
+    const [usersRes, pendingRes, activeRes, disbursedRes, activeAccountsRes] = await Promise.all([
+      // 1. Total registered users
       supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'user'),
 
       // 2. Maombi yanayosubiri (pending loans)
@@ -40,11 +40,17 @@ export default function StatsCards() {
         .from('loans')
         .select('amount')
         .in('status', ['active', 'completed']),
+
+      // 5. Active accounts — users waliowahi kuwasilisha mkopo angalau mmoja
+      supabase
+        .from('loans')
+        .select('user_id')
+        .not('user_id', 'is', null),
     ]);
 
     // Angalia makosa
     const firstErr =
-      usersRes.error || pendingRes.error || activeRes.error || disbursedRes.error;
+      usersRes.error || pendingRes.error || activeRes.error || disbursedRes.error || activeAccountsRes.error;
     if (firstErr) {
       setError(firstErr.message);
       setLoading(false);
@@ -57,8 +63,11 @@ export default function StatsCards() {
       0
     );
 
+    // Hesabu distinct users wenye loans
+    const distinctActiveUsers = new Set((activeAccountsRes.data || []).map(r => r.user_id)).size;
+
     setStats({
-      totalUsers: usersRes.count ?? 0,
+      totalUsers: distinctActiveUsers,
       pendingRequests: pendingRes.count ?? 0,
       activeLoans: activeRes.count ?? 0,
       totalDisbursed,
@@ -77,13 +86,13 @@ export default function StatsCards() {
 
   const cards = [
     {
-      title: 'Total Users',
+      title: 'Active Accounts',
       value: stats.totalUsers,
       display: stats.totalUsers,
       icon: Users,
       color: 'text-amber-400',
       iconBg: 'bg-amber-500/10 border-amber-500/20',
-      subtitle: 'Wateja waliojisajili',
+      subtitle: 'Waliowahi kuomba mkopo',
     },
     {
       title: 'Pending Requests',

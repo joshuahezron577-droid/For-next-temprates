@@ -93,7 +93,8 @@ export default function SignUpPage() {
               full_name: formData.fullName,
               username: formData.username,
               email: formData.email,
-              role: 'user',
+              role: 'user', // Daima 'user' — admin haiwezi kuwekwa hapa
+              is_active: true,
             },
             { onConflict: 'id' }
           );
@@ -103,9 +104,8 @@ export default function SignUpPage() {
         }
       }
 
-      setSuccessMessage("Account created! Please check your email and click the confirmation link before signing in.");
+      setSuccessMessage("Account created successfully!");
       
-      // Futa inputs mara moja
       setFormData({
         fullName: '',
         username: '',
@@ -114,7 +114,9 @@ export default function SignUpPage() {
         confirmPassword: ''
       });
 
-      // Usimhamishie moja kwa moja — asubiri athibitishe email kwanza
+      setTimeout(() => {
+        router.push('/log_in');
+      }, 2000);
 
     } catch (err) {
       const msg = err.message || '';

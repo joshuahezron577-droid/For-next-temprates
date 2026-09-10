@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Eye, Mail, Trash2,
-  RefreshCw, AlertTriangle, Users, Search
+  RefreshCw, AlertTriangle, Users, Search, Printer
 } from 'lucide-react';
 import { supabase } from '@/lib/superbase';
 
@@ -23,6 +23,17 @@ const fmtDate = (iso) => {
   });
 };
 
+const getUserLoanSummary = (user) => {
+  const loans = user.loans || [];
+
+  return {
+    loanCount: loans.length,
+    totalBorrowed: loans
+      .filter(loan => ['active', 'completed'].includes(loan.status))
+      .reduce((total, loan) => total + Number(loan.amount || 0), 0),
+  };
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export default function UsersManagementPage() {
@@ -34,6 +45,10 @@ export default function UsersManagementPage() {
   const [expandedUser, setExpandedUser] = useState(null);
   const [deleteLoading, setDeleteLoading] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null); // userId wa kuthibitisha
+
+  const handlePrint = () => {
+    window.print();
+  };
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -127,7 +142,7 @@ export default function UsersManagementPage() {
       )}
 
       {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 print:hidden">
         <div>
           <h2 className="text-xl font-bold tracking-wide flex items-center gap-2">
             <Users size={20} className="text-amber-400" />
@@ -157,40 +172,70 @@ export default function UsersManagementPage() {
             <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
             Refresh
           </button>
+          <button
+            onClick={handlePrint}
+            disabled={loading || !!error || users.length === 0}
+            className="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-black px-3 py-2 rounded-xl text-xs font-bold transition disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+          >
+            <Printer size={12} />
+            Print List
+          </button>
         </div>
       </div>
 
-      {/* SUMMARY PILLS */}
+      {/* SUMMARY STAT CARDS */}
       {!loading && !error && (
-        <div className="flex gap-3 mb-5 flex-wrap">
-          <div className="bg-zinc-900/60 border border-zinc-800 px-3 py-1.5 rounded-xl text-xs">
-            <span className="text-zinc-500">Total Users: </span>
-            <span className="text-white font-bold">{users.length}</span>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6 print:hidden">
+          {/* Total Registered */}
+          <div className="bg-[#121614] border border-neutral-800/80 rounded-2xl p-4 flex items-center gap-4 hover:border-amber-500/30 transition-all">
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 shrink-0">
+              <Users size={18} className="text-amber-400" />
+            </div>
+            <div>
+              <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium">Total Registered</p>
+              <p className="text-2xl font-extrabold text-amber-400 leading-tight">{users.length}</p>
+              <p className="text-[10px] text-neutral-600 mt-0.5">Wateja wote waliojisajili</p>
+            </div>
           </div>
-          <div className="bg-zinc-900/60 border border-zinc-800 px-3 py-1.5 rounded-xl text-xs">
-            <span className="text-zinc-500">Active Accounts: </span>
-            <span className="text-emerald-400 font-bold">
-              {users.filter(u => u.is_active !== false).length}
-            </span>
+
+          {/* Active Accounts */}
+          <div className="bg-[#121614] border border-neutral-800/80 rounded-2xl p-4 flex items-center gap-4 hover:border-emerald-500/30 transition-all">
+            <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-emerald-400">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                <polyline points="16 11 18 13 22 9"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium">Active Accounts</p>
+              <p className="text-2xl font-extrabold text-emerald-400 leading-tight">
+                {users.filter(u => (u.loans || []).some(l => ['active','pending','completed'].includes(l.status))).length}
+              </p>
+              <p className="text-[10px] text-neutral-600 mt-0.5">Waliowahi kutumia mfumo</p>
+            </div>
           </div>
-          <div className="bg-zinc-900/60 border border-zinc-800 px-3 py-1.5 rounded-xl text-xs">
-            <span className="text-zinc-500">Suspended: </span>
-            <span className="text-rose-400 font-bold">
-              {users.filter(u => u.is_active === false).length}
-            </span>
-          </div>
-          <div className="bg-zinc-900/60 border border-zinc-800 px-3 py-1.5 rounded-xl text-xs">
-            <span className="text-zinc-500">With Active Loans: </span>
-            <span className="text-amber-400 font-bold">
-              {users.filter(u => (u.loans || []).some(l => l.status === 'active')).length}
-            </span>
+
+          {/* With Active Loans */}
+          <div className="bg-[#121614] border border-neutral-800/80 rounded-2xl p-4 flex items-center gap-4 hover:border-blue-500/30 transition-all">
+            <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-400">
+                <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/>
+              </svg>
+            </div>
+            <div>
+              <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium">With Active Loans</p>
+              <p className="text-2xl font-extrabold text-blue-400 leading-tight">
+                {users.filter(u => (u.loans || []).some(l => l.status === 'active')).length}
+              </p>
+              <p className="text-[10px] text-neutral-600 mt-0.5">Wanaolipia mikopo sasa</p>
+            </div>
           </div>
         </div>
       )}
 
       {/* LOADING */}
       {loading && (
-        <div className="bg-[#121614] border border-neutral-800/80 rounded-2xl overflow-hidden">
+        <div className="bg-[#121614] border border-neutral-800/80 rounded-2xl overflow-hidden print:hidden">
           {[1,2,3,4].map(i => (
             <div key={i} className="flex items-center gap-4 px-4 py-4 border-b border-neutral-800/60 animate-pulse">
               <div className="w-9 h-9 rounded-full bg-zinc-800" />
@@ -212,7 +257,7 @@ export default function UsersManagementPage() {
 
       {/* ERROR */}
       {!loading && error && (
-        <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-8 text-center">
+        <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-8 text-center print:hidden">
           <AlertTriangle className="w-10 h-10 text-rose-400 mx-auto mb-2" />
           <p className="text-rose-400 font-semibold text-sm">Failed to load users</p>
           <p className="text-zinc-500 text-xs mt-1">{error}</p>
@@ -224,7 +269,7 @@ export default function UsersManagementPage() {
 
       {/* TABLE */}
       {!loading && !error && (
-        <div className="bg-[#121614] border border-neutral-800/80 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-[#121614] border border-neutral-800/80 rounded-2xl overflow-hidden shadow-xl print:hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
@@ -248,10 +293,8 @@ export default function UsersManagementPage() {
                   filtered.map((user) => {
                     const name         = user.full_name || user.username || 'Unknown User';
                     const loans        = user.loans || [];
+                    const { totalBorrowed } = getUserLoanSummary(user);
                     const activeLoans  = loans.filter(l => l.status === 'active').length;
-                    const totalBorrowed = loans
-                      .filter(l => ['active', 'completed'].includes(l.status))
-                      .reduce((s, l) => s + Number(l.amount || 0), 0);
                     const isExpanded   = expandedUser === user.id;
                     const canDelete    = loans.length === 0 ||
                       loans.every(l => l.status === 'completed' || l.status === 'rejected');
@@ -310,8 +353,12 @@ export default function UsersManagementPage() {
 
                           {/* Status */}
                           <td className="py-4 px-4">
-                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[10px] font-medium">
-                              Active
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-medium ${
+                              user.is_active === false
+                                ? 'bg-rose-500/10 border border-rose-500/20 text-rose-400'
+                                : 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
+                            }`}>
+                              {user.is_active === false ? 'Suspended' : 'Active'}
                             </span>
                           </td>
 
@@ -408,6 +455,84 @@ export default function UsersManagementPage() {
             Showing <strong className="text-neutral-300">{filtered.length}</strong> of <strong className="text-neutral-300">{users.length}</strong> users
           </div>
         </div>
+      )}
+
+      {/* PRINT REPORT: intentionally separate from the interactive table */}
+      {!loading && !error && (
+        <section className="hidden print:block print-report">
+          <div className="mb-5 border-b-2 border-black pb-3">
+            <h1 className="text-2xl font-bold text-black">Omar Microfinance - Users Report</h1>
+            <p className="mt-1 text-sm text-black">All registered users | Printed {fmtDate(new Date().toISOString())}</p>
+          </div>
+          <div className="mb-4 grid grid-cols-3 border border-black text-center text-sm text-black">
+            <div className="border-r border-black px-3 py-2">
+              <span className="block text-[10px] uppercase tracking-wide">Total Users</span>
+              <strong className="text-lg">{users.length}</strong>
+            </div>
+            <div className="border-r border-black px-3 py-2">
+              <span className="block text-[10px] uppercase tracking-wide">Active Accounts</span>
+              <strong className="text-lg">{users.filter(u => (u.loans || []).some(l => ['active','pending','completed'].includes(l.status))).length}</strong>
+            </div>
+            <div className="px-3 py-2">
+              <span className="block text-[10px] uppercase tracking-wide">With Active Loans</span>
+              <strong className="text-lg">{users.filter(user => (user.loans || []).some(loan => loan.status === 'active')).length}</strong>
+            </div>
+          </div>
+          <table className="w-full border-collapse text-left text-xs text-black">
+            <thead>
+              <tr className="border-b-2 border-black">
+                <th className="px-2 py-2 font-bold">Name</th>
+                <th className="px-2 py-2 font-bold">User ID</th>
+                <th className="px-2 py-2 font-bold">Email</th>
+                <th className="px-2 py-2 font-bold">Username</th>
+                <th className="px-2 py-2 font-bold">Loans</th>
+                <th className="px-2 py-2 font-bold">Total Borrowed</th>
+                <th className="px-2 py-2 font-bold">Account Status</th>
+                <th className="px-2 py-2 font-bold">Registered</th>
+              </tr>
+            </thead>
+            <tbody>
+              {users.map(user => {
+                const loans = user.loans || [];
+                const { loanCount, totalBorrowed } = getUserLoanSummary(user);
+                const activeLoanCount = loans.filter(loan => loan.status === 'active').length;
+                const pendingLoanCount = loans.filter(loan => loan.status === 'pending').length;
+
+                return (
+                  <tr key={user.id} className="border-b border-gray-300">
+                    <td className="px-2 py-2">{user.full_name || user.username || 'Unknown User'}</td>
+                    <td className="px-2 py-2 font-mono text-[10px]">{user.id.slice(0, 8)}...</td>
+                    <td className="px-2 py-2">{user.email || '—'}</td>
+                    <td className="px-2 py-2">{user.username ? `@${user.username}` : '—'}</td>
+                    <td className="px-2 py-2">
+                      {loanCount === 0 ? (
+                        <span className="text-gray-400">—</span>
+                      ) : (
+                        <span>
+                          <strong>{loanCount}</strong>
+                          {activeLoanCount > 0 && (
+                            <span className="ml-1 text-[10px] border border-blue-400 text-blue-600 rounded px-1">{activeLoanCount} active</span>
+                          )}
+                          {pendingLoanCount > 0 && (
+                            <span className="ml-1 text-[10px] border border-amber-500 text-amber-600 rounded px-1">{pendingLoanCount} pending</span>
+                          )}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-2 py-2">{loanCount > 0 ? fmt(totalBorrowed) : '—'}</td>
+                    <td className="px-2 py-2">{user.is_active === false ? 'Suspended' : 'Active'}</td>
+                    <td className="px-2 py-2">{fmtDate(user.created_at)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <footer className="print-report-footer text-xs text-black">
+            <span>Generated by Omar Microfinance System</span>
+            <span className="print-page-number" />
+            <span>This document is confidential</span>
+          </footer>
+        </section>
       )}
     </div>
   );

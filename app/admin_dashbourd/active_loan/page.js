@@ -23,7 +23,25 @@ const repaymentStatus = (progress, dueDate) => {
   return 'On Track';
 };
 
-// ─── Component ───────────────────────────────────────────────────────────────
+// ─── Parse guarantor info from description field (old loans fallback) ────────
+const parseGuarantorFromDescription = (description) => {
+  if (!description) return null;
+  // Format: "Occupation: X | Workplace: Y | Guarantor: Name (Phone)"
+  const guarantorMatch = description.match(/Guarantor:\s*([^(]+)\(([^)]+)\)/i);
+  const occupationMatch = description.match(/Occupation:\s*([^|]+)/i);
+  const workplaceMatch = description.match(/Workplace:\s*([^|]+)/i);
+
+  if (!guarantorMatch) return null;
+
+  return {
+    full_name: guarantorMatch[1].trim(),
+    phone_no: guarantorMatch[2].trim(),
+    occupation: occupationMatch ? occupationMatch[1].trim() : null,
+    workplace: workplaceMatch ? workplaceMatch[1].trim() : null,
+    _fromDescription: true, // flag kuonyesha chanzo
+  };
+};
+
 
 export default function ActiveLoansPage() {
   const [loans, setLoans] = useState([]);
@@ -59,6 +77,7 @@ export default function ActiveLoansPage() {
         due_date,
         created_at,
         status,
+        description,
         profiles (
           full_name,
           username,
@@ -261,7 +280,7 @@ export default function ActiveLoansPage() {
             const status     = repaymentStatus(progress, loan.due_date);
             const isActioning = actionLoading === loan.id;
             const isExpanded  = expandedId === loan.id;
-            const guarantor   = guarantors[loan.id]; // guarantor data
+            const guarantor   = guarantors[loan.id] || parseGuarantorFromDescription(loan.description); // guarantor data (table au description fallback)
 
             return (
               <div
@@ -469,6 +488,11 @@ export default function ActiveLoansPage() {
                         <p className="text-[10px] uppercase text-neutral-500 font-semibold mb-2 flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
                           Guarantor Information
+                          {guarantor?._fromDescription && (
+                            <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400 text-[9px] font-semibold tracking-wider">
+                              Partial (from old application)
+                            </span>
+                          )}
                         </p>
                         {guarantor ? (
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -476,34 +500,46 @@ export default function ActiveLoansPage() {
                               <p className="text-[10px] uppercase text-neutral-600">Full Name</p>
                               <p className="text-white font-semibold">{guarantor.full_name || '—'}</p>
                             </div>
-                            <div>
-                              <p className="text-[10px] uppercase text-neutral-600">Relationship</p>
-                              <p className="text-zinc-300">{guarantor.relationship || '—'}</p>
-                            </div>
+                            {guarantor.relationship && (
+                              <div>
+                                <p className="text-[10px] uppercase text-neutral-600">Relationship</p>
+                                <p className="text-zinc-300">{guarantor.relationship}</p>
+                              </div>
+                            )}
                             <div>
                               <p className="text-[10px] uppercase text-neutral-600">Phone</p>
                               <p className="text-emerald-400 font-semibold">{guarantor.phone_no || '—'}</p>
                             </div>
-                            <div>
-                              <p className="text-[10px] uppercase text-neutral-600">Email</p>
-                              <p className="text-zinc-300">{guarantor.email || '—'}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] uppercase text-neutral-600">Occupation</p>
-                              <p className="text-zinc-300">{guarantor.occupation || '—'}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] uppercase text-neutral-600">Workplace</p>
-                              <p className="text-zinc-300">{guarantor.workplace || '—'}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] uppercase text-neutral-600">National ID</p>
-                              <p className="text-zinc-300 font-mono">{guarantor.national_id || '—'}</p>
-                            </div>
-                            <div className="sm:col-span-2">
-                              <p className="text-[10px] uppercase text-neutral-600">Physical Address</p>
-                              <p className="text-zinc-300">{guarantor.physical_address || '—'}</p>
-                            </div>
+                            {guarantor.email && (
+                              <div>
+                                <p className="text-[10px] uppercase text-neutral-600">Email</p>
+                                <p className="text-zinc-300">{guarantor.email}</p>
+                              </div>
+                            )}
+                            {guarantor.occupation && (
+                              <div>
+                                <p className="text-[10px] uppercase text-neutral-600">Occupation</p>
+                                <p className="text-zinc-300">{guarantor.occupation}</p>
+                              </div>
+                            )}
+                            {guarantor.workplace && (
+                              <div>
+                                <p className="text-[10px] uppercase text-neutral-600">Workplace</p>
+                                <p className="text-zinc-300">{guarantor.workplace}</p>
+                              </div>
+                            )}
+                            {guarantor.national_id && (
+                              <div>
+                                <p className="text-[10px] uppercase text-neutral-600">National ID</p>
+                                <p className="text-zinc-300 font-mono">{guarantor.national_id}</p>
+                              </div>
+                            )}
+                            {guarantor.physical_address && (
+                              <div className="sm:col-span-2">
+                                <p className="text-[10px] uppercase text-neutral-600">Physical Address</p>
+                                <p className="text-zinc-300">{guarantor.physical_address}</p>
+                              </div>
+                            )}
                           </div>
                         ) : (
                           <p className="text-[11px] text-neutral-600 italic">

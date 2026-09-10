@@ -92,11 +92,13 @@ function SignInForm() {
           return;
         }
 
-        // 5. Elekeza kulingana na role
-        if (profileData.role === 'admin') {
+        // 5. Elekeza kulingana na role — hakikisha role ipo
+        const role = profileData.role?.toLowerCase()?.trim();
+        if (role === 'admin') {
           setFormData({ email: '', password: '' });
           router.push('/admin_dashbourd');
         } else {
+          // Default — kila mtu mwingine ni user
           setFormData({ email: '', password: '' });
           router.push('/user_dashbourd');
         }

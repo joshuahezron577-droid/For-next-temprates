@@ -71,13 +71,44 @@ export default function LoanRequestsPage() {
     fetchLoans();
   }, [fetchLoans]);
 
+  // Hesabu due_date kutoka duration string (e.g. "1 Month", "3 Months", "6 Months")
+  const calcDueDate = (duration) => {
+    const now = new Date();
+    if (!duration) {
+      // Default: mwezi 1 kama duration haijajulikana
+      now.setMonth(now.getMonth() + 1);
+      return now.toISOString().split('T')[0];
+    }
+    const lower = duration.toLowerCase();
+    const num = parseInt(lower) || 1;
+    if (lower.includes('year')) {
+      now.setFullYear(now.getFullYear() + num);
+    } else if (lower.includes('week')) {
+      now.setDate(now.getDate() + num * 7);
+    } else {
+      // Default: months
+      now.setMonth(now.getMonth() + num);
+    }
+    return now.toISOString().split('T')[0];
+  };
+
   // Approve au Reject — update status kwenye DB
   const handleStatusUpdate = async (loanId, newStatus) => {
     setActionLoading(loanId);
 
-    const updateData = newStatus === 'active'
-      ? { status: newStatus, approved_at: new Date().toISOString(), disbursed_at: new Date().toISOString() }
-      : { status: newStatus };
+    let updateData;
+    if (newStatus === 'active') {
+      const loan = loans.find(l => l.id === loanId);
+      const dueDate = calcDueDate(loan?.duration);
+      updateData = {
+        status: newStatus,
+        approved_at: new Date().toISOString(),
+        disbursed_at: new Date().toISOString(),
+        due_date: dueDate,
+      };
+    } else {
+      updateData = { status: newStatus };
+    }
 
     const { error: updateError } = await supabase
       .from('loans')

@@ -11,6 +11,146 @@ import LoanSummary from '@/components/user/LoanSummary';
 import { HiCurrencyDollar, HiCheckCircle, HiClock, HiCreditCard } from 'react-icons/hi';
 import { supabase } from '@/lib/superbase';
 
+// ── Loan Calculator Component ─────────────────────────────────────────────
+function LoanCalculator() {
+  const [amount, setAmount] = useState('');
+  const [duration, setDuration] = useState('3 Months');
+  const [interestRate, setInterestRate] = useState(null); // kutoka system settings
+  const [maxLimit, setMaxLimit] = useState(null);
+
+  // Pata interest rate na max limit kutoka system settings
+  useEffect(() => {
+    supabase
+      .from('system_settings')
+      .select('key, value')
+      .in('key', ['default_interest', 'max_loan_limit'])
+      .then(({ data }) => {
+        if (data) {
+          data.forEach(row => {
+            if (row.key === 'default_interest') setInterestRate(Number(row.value) || 30);
+            if (row.key === 'max_loan_limit')   setMaxLimit(Number(row.value) || 10000000);
+          });
+        }
+      });
+  }, []);
+
+  const principal = parseFloat(amount) || 0;
+  const rate = interestRate ?? 30;
+
+  // Hesabu monthly installment kulingana na muda
+  const getMonths = (dur) => {
+    const n = parseInt(dur) || 1;
+    if (dur?.toLowerCase().includes('year')) return n * 12;
+    return n;
+  };
+
+  const months       = getMonths(duration);
+  const interestAmt  = (principal * rate) / 100;
+  const totalPayable = principal + interestAmt;
+  const monthly      = months > 0 ? totalPayable / months : 0;
+
+  const fmt = (n) => `TZS ${Number(n).toLocaleString('en-TZ', { maximumFractionDigits: 0 })}`;
+  const isOverLimit = maxLimit && principal > maxLimit;
+  const hasResult   = principal > 0 && !isOverLimit;
+
+  return (
+    <div className="bg-[#121212] border border-zinc-800 rounded-2xl p-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+          <HiCurrencyDollar className="w-5 h-5 text-emerald-400" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-white">Loan Calculator</h3>
+          <p className="text-[11px] text-zinc-500">
+            Hesabu mkopo wako kabla ya kuomba — bila kuathiri akaunti yako
+          </p>
+        </div>
+      </div>
+
+      {/* Inputs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Kiasi */}
+        <div>
+          <label className="block text-[11px] text-zinc-400 uppercase tracking-wider mb-1.5 font-semibold">
+            Kiasi (TZS)
+          </label>
+          <input
+            type="number"
+            min="1"
+            value={amount}
+            onChange={e => setAmount(e.target.value)}
+            placeholder="e.g. 500,000"
+            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-emerald-500 transition"
+          />
+          {maxLimit && (
+            <p className={`text-[10px] mt-1 ${isOverLimit ? 'text-rose-400' : 'text-zinc-600'}`}>
+              {isOverLimit ? `⚠ Imezidi kikomo cha ${fmt(maxLimit)}` : `Kikomo: ${fmt(maxLimit)}`}
+            </p>
+          )}
+        </div>
+
+        {/* Muda */}
+        <div>
+          <label className="block text-[11px] text-zinc-400 uppercase tracking-wider mb-1.5 font-semibold">
+            Muda wa Kulipa
+          </label>
+          <select
+            value={duration}
+            onChange={e => setDuration(e.target.value)}
+            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-300 focus:outline-none focus:border-emerald-500 transition"
+          >
+            <option value="1 Month">1 Month</option>
+            <option value="3 Months">3 Months</option>
+            <option value="6 Months">6 Months</option>
+            <option value="12 Months">12 Months</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Interest rate display */}
+      <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+        Riba ya sasa:
+        <span className="text-emerald-400 font-bold">
+          {interestRate !== null ? `${interestRate}%` : '...'}
+        </span>
+        <span className="text-zinc-600">(inawekwa na mfumo — haibadiliki)</span>
+      </div>
+
+      {/* Results */}
+      {hasResult ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 text-center">
+            <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Principal</p>
+            <p className="text-sm font-bold text-white">{fmt(principal)}</p>
+          </div>
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 text-center">
+            <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Riba ({rate}%)</p>
+            <p className="text-sm font-bold text-amber-400">{fmt(interestAmt)}</p>
+          </div>
+          <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-xl p-3 text-center">
+            <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Jumla ya Kulipa</p>
+            <p className="text-sm font-bold text-emerald-400">{fmt(totalPayable)}</p>
+          </div>
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 text-center">
+            <p className="text-[10px] text-zinc-500 uppercase tracking-wide mb-1">Kila Mwezi</p>
+            <p className="text-sm font-bold text-blue-400">{fmt(monthly)}</p>
+          </div>
+        </div>
+      ) : principal > 0 && isOverLimit ? (
+        <div className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-3 text-center text-rose-400 text-xs font-semibold">
+          Kiasi kimezidi kikomo kinachoruhusiwa. Punguza kiasi.
+        </div>
+      ) : (
+        <div className="bg-zinc-900/40 border border-zinc-800/50 rounded-xl p-4 text-center text-zinc-600 text-xs">
+          Weka kiasi ili uone matokeo ya hesabu
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [user, setUser] = useState(null);         // Supabase auth user
@@ -38,7 +178,13 @@ export default function DashboardPage() {
         .single();
       setProfile(profileData);
 
-      // 3. Kama account imesimamishwa — sign out na redirect
+      // Kama ni admin — mrudishe admin dashboard
+      if (profileData?.role === 'admin') {
+        window.location.href = '/admin_dashbourd';
+        return;
+      }
+
+      // Kama account imesimamishwa — sign out na redirect
       if (profileData?.is_active === false) {
         await supabase.auth.signOut();
         window.location.href = '/log_in?suspended=1';
@@ -154,6 +300,9 @@ export default function DashboardPage() {
                 <LoanSummary userId={user?.id} loans={loans} />
                 <RecentTransactions userId={user?.id} loans={loans} />
               </div>
+
+              {/* ── LOAN CALCULATOR ──────────────────────────────────── */}
+              <LoanCalculator />
             </>
           )}
 
